@@ -7,13 +7,22 @@ import (
 
 type UserID string
 
+type SEOMeta struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
+}
+
 type User struct {
-	ID        UserID    `json:"id"`
-	Email     string    `json:"email"`
-	Handle    string    `json:"handle"`
-	AvatarURL string    `json:"avatar_url,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          UserID    `json:"id"`
+	Email       string    `json:"email"`
+	Handle      string    `json:"handle"`
+	Title       string    `json:"title,omitempty"`
+	Description string    `json:"description,omitempty"`
+	AvatarURL   string    `json:"avatar_url,omitempty"`
+	SEOMeta     SEOMeta   `json:"seo_meta,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // Repository interfaces define the contract for data persistence

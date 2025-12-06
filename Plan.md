@@ -70,8 +70,21 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
 *   [x] **Auth Service**: Basic logic for user registration/login and handle uniqueness.
 *   [x] **Server Skeleton**: HTTP server wiring with graceful shutdown.
 
+*   [x] **User Extensions**:
+    *   Added `Title`, `Description`, and `SEOMeta` to `User` domain.
+*   [x] **Media System**:
+    *   `MediaUploader` interface.
+    *   S3 Adapter with CDN support (`CDN_URL`).
+*   [x] **Social Integration**:
+    *   `SocialResolver` interface.
+    *   `SocialAdapter` utilizing regex for platform detection (Facebook, Twitter, etc.).
+*   [x] **SEO & Metadata**:
+    *   `MetadataFetcher` interface.
+    *   `HTMLFetcher` adapter for OpenGraph/Twitter card parsing.
+
 ### Pending
 *   [ ] OAuth Handlers (HTTP layer).
 *   [ ] Link CRUD Handlers.
 *   [ ] Frontend Templates (Login, Dashboard, Public Profile).
 *   [ ] HTMX Integration.
+

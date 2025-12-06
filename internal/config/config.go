@@ -6,11 +6,12 @@ import (
 )
 
 type Config struct {
-	Port          string
-	DBPath        string
-	S3Bucket      string
-	S3Region      string
-	AllowedEmails []string // Parsed from comma-separated env
+	Port               string
+	DBPath             string
+	S3Bucket           string
+	S3Region           string
+	CDNURL             string
+	AllowedEmails      []string // Parsed from comma-separated env
 	GoogleClientID     string
 	GoogleClientSecret string
 	GithubClientID     string
@@ -23,6 +24,7 @@ func Load() *Config {
 		DBPath:             getEnv("DB_PATH", "./data"),
 		S3Bucket:           getEnv("S3_BUCKET", ""),
 		S3Region:           getEnv("S3_REGION", "us-east-1"),
+		CDNURL:             getEnv("CDN_URL", ""),
 		AllowedEmails:      parseList(getEnv("ALLOWED_EMAILS", "*")),
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
