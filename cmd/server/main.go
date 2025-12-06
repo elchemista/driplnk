@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	adapters_http "github.com/elchemista/driplnk/internal/adapters/http"
+	"github.com/elchemista/driplnk/internal/adapters/oauth"
 	"github.com/elchemista/driplnk/internal/adapters/repository"
 	"github.com/elchemista/driplnk/internal/adapters/storage"
 	"github.com/elchemista/driplnk/internal/config"
@@ -59,7 +61,18 @@ func main() {
 
 	authService := service.NewAuthService(userRepo, cfg)
 
-	// 6. Setup HTTP Server
+	// Initialize Social Adapter with config
+	// (Variable is unused for now, but wired mostly to show integration)
+	// _ = social.NewSocialAdapter(cfg.Socials)
+
+	// 6. Setup OAuth Adapters
+	baseURL := "http://localhost:" + cfg.Port // TODO: Make configurable
+	githubProvider := oauth.NewGitHubProvider(cfg, baseURL+"/auth/github/callback")
+	googleProvider := oauth.NewGoogleProvider(cfg, baseURL+"/auth/google/callback")
+
+	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, cfg)
+
+	// 7. Setup HTTP Server
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +80,13 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// TODO: Add Auth Handlers and Link Handlers
-	_ = authService
+	// Auth Routes
+	mux.HandleFunc("/auth/github/login", authHandler.HandleGithubLogin)
+	mux.HandleFunc("/auth/github/callback", authHandler.HandleGithubCallback)
+	mux.HandleFunc("/auth/google/login", authHandler.HandleGoogleLogin)
+	mux.HandleFunc("/auth/google/callback", authHandler.HandleGoogleCallback)
+	mux.HandleFunc("/auth/logout", authHandler.Logout)
+	mux.HandleFunc("/auth/me", authHandler.Me) // Debug
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

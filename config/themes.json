@@ -1,0 +1,96 @@
+{
+    "layouts": [
+        {
+            "id": "clean",
+            "name": "Clean",
+            "css_class": "layout-clean"
+        },
+        {
+            "id": "cards",
+            "name": "Cards",
+            "css_class": "layout-cards"
+        },
+        {
+            "id": "compact",
+            "name": "Compact",
+            "css_class": "layout-compact"
+        }
+    ],
+    "backgrounds": [
+        {
+            "id": "white",
+            "name": "White",
+            "type": "color",
+            "value": "#ffffff"
+        },
+        {
+            "id": "black",
+            "name": "Black",
+            "type": "color",
+            "value": "#000000"
+        },
+        {
+            "id": "gradient-blue",
+            "name": "Blue Gradient",
+            "type": "gradient",
+            "value": "linear-gradient(to right, #4facfe 0%, #00f2fe 100%)"
+        },
+        {
+            "id": "gradient-sunset",
+            "name": "Sunset",
+            "type": "gradient",
+            "value": "linear-gradient(to top, #fcc5e4 0%, #fda34b 15%, #ff7882 35%, #c8699e 52%, #7046aa 71%, #0c1db8 87%, #020f75 100%)"
+        }
+    ],
+    "patterns": [
+        {
+            "id": "none",
+            "name": "None",
+            "css_class": ""
+        },
+        {
+            "id": "dots",
+            "name": "Polka Dots",
+            "css_class": "pattern-dots"
+        },
+        {
+            "id": "lines",
+            "name": "Lines",
+            "css_class": "pattern-lines"
+        }
+    ],
+    "fonts": [
+        {
+            "id": "inter",
+            "name": "Inter",
+            "family": "'Inter', sans-serif"
+        },
+        {
+            "id": "roboto",
+            "name": "Roboto",
+            "family": "'Roboto', sans-serif"
+        },
+        {
+            "id": "lora",
+            "name": "Lora",
+            "family": "'Lora', serif"
+        }
+    ],
+    "animations": [
+        {
+            "id": "none",
+            "name": "None",
+            "css_class": ""
+        },
+        {
+            "id": "fade",
+            "name": "Fade In",
+            "css_class": "animate-fade"
+        },
+        {
+            "id": "slide-up",
+            "name": "Slide Up",
+            "css_class": "animate-slide-up"
+        }
+    ]
+}

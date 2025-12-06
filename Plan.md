@@ -7,10 +7,9 @@
 * Personalized style and layout
 * Analytics
 * Products & affiliate links
-* Socials (with Icons)
-* Socials (with Icons)
+* Socials (with Icons) - **Configurable via JSON**
 * Subscriptions
-* Theme Customization (Background, Animations, Layout, Fonts, Colors)
+* Theme Customization (Background, Animations, Layout, Fonts, Colors) - **Configurable via JSON**
 
 ## Tech Stack
 
@@ -48,9 +47,12 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
 *   **`cmd/server`**: Entry point. Wires Config, Storage (Pebble/S3), and Services.
 *   **`internal/domain`**: Pure business entities (`User`, `Link`) and Repository Interfaces (`UserRepository`). No external dependencies.
 *   **`internal/service`**: Business logic implementations (`AuthService`). Orchestrates data flow.
+*   **`internal/ports`**: Domain interfaces/ports (e.g., `OAuthProvider`).
 *   **`internal/adapters`**:
-    *   **`repository`**: `PebbleRepository` implements `UserRepository`. Handles object serialization/indexing.
-    *   **`storage`**: `S3Store` handles database backup and restore operations.
+    *   **`repository`**: `PebbleRepository` (Adapter for `UserRepository`).
+    *   **`oauth`**: GitHub and Google implementations of `OAuthProvider`.
+    *   **`http`**: HTTP Handlers (`AuthHandler`, etc.).
+    *   **`storage`**: `S3Store` for backups.
 *   **`views`**: Templ templates for the UI.
 
 ### Data Flow
@@ -74,7 +76,11 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
 
 *   [x] **User Extensions**:
     *   Added `Title`, `Description`, and `SEOMeta` to `User` domain.
-    *   [ ] Add `Theme` struct (Background, Animations, Layout, Colors, Fonts).
+    *   [x] Added `Theme` struct (Background, Animations, Layout, Colors, Fonts).
+*   [x] **OAuth System**:
+    *   `OAuthProvider` port.
+    *   Adapters for GitHub and Google.
+    *   HTTP Handlers with CSRF protection (state cookie) and session management.
 *   [x] **Media System**:
     *   `MediaUploader` interface.
     *   S3 Adapter with CDN support (`CDN_URL`).
@@ -84,10 +90,12 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
 *   [x] **SEO & Metadata**:
     *   `MetadataFetcher` interface.
     *   `HTMLFetcher` adapter for OpenGraph/Twitter card parsing.
+*   [x] **Configuration System**:
+    *   JSON-based config for `Socials` and `Themes`.
+    *   Dynamic loading and regex compilation.
+    *   Environment variable support for config path.
 
 ### Pending
-*   [ ] OAuth Handlers (HTTP layer).
 *   [ ] Link CRUD Handlers.
 *   [ ] Frontend Templates (Login, Dashboard, Public Profile).
 *   [ ] HTMX Integration.
-

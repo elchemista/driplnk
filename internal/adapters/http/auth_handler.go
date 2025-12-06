@@ -1,0 +1,159 @@
+package http
+
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/elchemista/driplnk/internal/config"
+	"github.com/elchemista/driplnk/internal/ports"
+	"github.com/elchemista/driplnk/internal/service"
+)
+
+type AuthHandler struct {
+	authService *service.AuthService
+	github      ports.OAuthProvider
+	google      ports.OAuthProvider
+	cfg         *config.Config
+}
+
+func NewAuthHandler(authService *service.AuthService, github, google ports.OAuthProvider, cfg *config.Config) *AuthHandler {
+	return &AuthHandler{
+		authService: authService,
+		github:      github,
+		google:      google,
+		cfg:         cfg,
+	}
+}
+
+// generateState creates a random string to prevent CSRF
+func generateState() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+func (h *AuthHandler) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
+	state := generateState()
+	// In production, store state in a secure, HttpOnly cookie with expiration
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   h.cfg.Port == "443", // Simplistic check, use env/config for secure flag
+		Path:     "/",
+	})
+	http.Redirect(w, r, h.github.GetAuthURL(state), http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	state := generateState()
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   h.cfg.Port == "443",
+		Path:     "/",
+	})
+	http.Redirect(w, r, h.google.GetAuthURL(state), http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandler) HandleGithubCallback(w http.ResponseWriter, r *http.Request) {
+	h.handleCallback(w, r, h.github)
+}
+
+func (h *AuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	h.handleCallback(w, r, h.google)
+}
+
+func (h *AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request, provider ports.OAuthProvider) {
+	// 1. Validate State
+	stateCookie, err := r.Cookie("oauth_state")
+	if err != nil {
+		http.Error(w, "State cookie missing", http.StatusBadRequest)
+		return
+	}
+	if r.URL.Query().Get("state") != stateCookie.Value {
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Exchange Code
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Code missing", http.StatusBadRequest)
+		return
+	}
+
+	token, err := provider.Exchange(r.Context(), code)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Token exchange failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Get User Info
+	oauthUser, err := provider.GetUserInfo(r.Context(), token)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get user info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 4. Login/Register in Domain
+	user, err := h.authService.LoginOrRegister(r.Context(), oauthUser.Email, oauthUser.Name, oauthUser.AvatarURL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Login failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Create Session (Simple Cookie for now, replace with JWT/Session Store later)
+	// Using a simple signed cookie or similar is better, but for MVP:
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_session",
+		Value:    string(user.ID), // In real app, sign this!
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+		Path:     "/",
+	})
+
+	// Redirect to dashboard
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Clear session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_session",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Path:     "/",
+	})
+
+	// If HTMX request, we might want to return a redirect header or partial
+	// For now standard redirect logic if needed, or 200 OK
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Logged out"))
+}
+
+// Debug handler to check session
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("user_session")
+	if err != nil {
+		http.Error(w, "Not logged in", http.StatusUnauthorized)
+		return
+	}
+
+	// Ideally we fetch user from DB here
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"user_id": cookie.Value})
+}
