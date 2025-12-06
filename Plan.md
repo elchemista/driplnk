@@ -8,7 +8,9 @@
 * Analytics
 * Products & affiliate links
 * Socials (with Icons)
+* Socials (with Icons)
 * Subscriptions
+* Theme Customization (Background, Animations, Layout, Fonts, Colors)
 
 ## Tech Stack
 
@@ -72,6 +74,7 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
 
 *   [x] **User Extensions**:
     *   Added `Title`, `Description`, and `SEOMeta` to `User` domain.
+    *   [ ] Add `Theme` struct (Background, Animations, Layout, Colors, Fonts).
 *   [x] **Media System**:
     *   `MediaUploader` interface.
     *   S3 Adapter with CDN support (`CDN_URL`).
