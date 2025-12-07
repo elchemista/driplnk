@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,69 +13,116 @@ import (
 	adapters_http "github.com/elchemista/driplnk/internal/adapters/http"
 	"github.com/elchemista/driplnk/internal/adapters/oauth"
 	"github.com/elchemista/driplnk/internal/adapters/repository"
+	"github.com/elchemista/driplnk/internal/adapters/social"
 	"github.com/elchemista/driplnk/internal/adapters/storage"
 	"github.com/elchemista/driplnk/internal/config"
 	"github.com/elchemista/driplnk/internal/domain"
+	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/internal/service"
+	"github.com/elchemista/driplnk/views/home"
 )
 
 func main() {
-	// 1. Load Config
-	cfg := config.Load()
-	log.Println("Config loaded")
+	// 1. Load Server Config
+	serverCfg := config.LoadServerConfig()
+	log.Printf("[INFO] Starting Driplnk Server on port %s (Env: %s)", serverCfg.Port, serverCfg.Env)
 
 	ctx := context.Background()
 
-	// 2. Setup S3 Store (if configured)
+	// 2. Setup Storage (S3)
+	s3Cfg := storage.LoadS3Config()
 	var s3Store *storage.S3Store
-	if cfg.S3Bucket != "" {
+	if s3Cfg.Bucket != "" {
+		log.Printf("[INFO] Initializing S3 Store (Bucket: %s, Region: %s)", s3Cfg.Bucket, s3Cfg.Region)
 		var err error
-		s3Store, err = storage.NewS3Store(ctx, cfg.S3Bucket, cfg.S3Region)
+		s3Store, err = storage.NewS3Store(ctx, s3Cfg.Bucket, s3Cfg.Region)
 		if err != nil {
-			log.Fatalf("Failed to init S3 store: %v", err)
-		}
-		log.Println("S3 Store initialized")
-
-		// 3. Attempt Restore from S3 (before opening DB)
-		log.Println("Attempting to restore DB from S3...")
-		if err := s3Store.Restore(ctx, cfg.DBPath); err != nil {
-			log.Printf("Warning: Failed to restore DB from S3 (might be fresh start): %v", err)
-		} else {
-			log.Println("DB restored from S3 successfully")
+			log.Fatalf("[FATAL] Failed to init S3 store: %v", err)
 		}
 	} else {
-		log.Println("S3 Bucket not configured, skipping S3 backup/restore")
+		log.Println("[INFO] S3 Bucket not configured, skipping S3 adapter")
 	}
 
-	// 4. Initialize Pebble DB
-	repo, err := repository.NewPebbleRepository(cfg.DBPath)
-	if err != nil {
-		log.Fatalf("Failed to open Pebble DB: %v", err)
+	// 3. Setup Repository (Postgres or Pebble)
+	var userRepo domain.UserRepository
+	var dbCloser io.Closer
+
+	// Determine which DB to use based on env (Postgres takes precedence)
+	pgCfg := repository.LoadPostgresConfig()
+
+	if pgCfg.URL != "" {
+		repo, err := repository.NewPostgresRepository(pgCfg)
+		if err != nil {
+			log.Fatalf("[FATAL] Failed to initialize Postgres: %v", err)
+		}
+		userRepo = repo
+		dbCloser = repo
+	} else {
+		pebbleCfg := repository.LoadPebbleConfig()
+		// If S3 is enabled and we are using Pebble, try restore first
+		if s3Store != nil {
+			log.Println("[INFO] Attempting to restore DB from S3...")
+			if err := s3Store.Restore(ctx, pebbleCfg.Path); err != nil {
+				log.Printf("[WARN] Failed to restore DB (fresh start or error): %v", err)
+			} else {
+				log.Println("[INFO] DB restored from S3 successfully")
+			}
+		}
+
+		repo, err := repository.NewPebbleRepository(pebbleCfg)
+		if err != nil {
+			log.Fatalf("[FATAL] Failed to initialize PebbleDB: %v", err)
+		}
+		userRepo = repo
+		dbCloser = repo
 	}
-	defer repo.Close()
-	log.Println("Pebble DB opened")
 
-	// 5. Initialize Services
-	// Cast repo to interface to ensure compliance
-	var userRepo domain.UserRepository = repo
-	// var linkRepo domain.LinkRepository = repo // Unused yet
+	// 4. Setup Services
+	// Auth Service needs Allowed Emails
+	oauthCfg := oauth.LoadOAuthConfig()
+	allowedEmails := config.ParseList(oauthCfg.AllowedEmails)
+	log.Printf("[INFO] Initializing AuthService with %d allowed email rules", len(allowedEmails))
 
-	authService := service.NewAuthService(userRepo, cfg)
+	authService := service.NewAuthService(userRepo, allowedEmails)
 
-	// Initialize Social Adapter with config
-	// (Variable is unused for now, but wired mostly to show integration)
-	// _ = social.NewSocialAdapter(cfg.Socials)
+	// 5. Setup Social Adapter (Load JSON Config)
+	// We assume config files are in ./config or specified dir
+	configDir := "config" // Could be env var
+	var socialConfigs []config.SocialPlatformConfig
+	if err := config.LoadJSONConfig(configDir+"/socials.json", &socialConfigs); err != nil {
+		log.Printf("[WARN] Failed to load socials.json: %v", err)
+	} else {
+		log.Printf("[INFO] Loaded %d social platform configs", len(socialConfigs))
+	}
+	_ = social.NewSocialAdapter(socialConfigs) // currently unused but wired
 
-	// 6. Setup OAuth Adapters
-	baseURL := "http://localhost:" + cfg.Port // TODO: Make configurable
-	githubProvider := oauth.NewGitHubProvider(cfg, baseURL+"/auth/github/callback")
-	googleProvider := oauth.NewGoogleProvider(cfg, baseURL+"/auth/google/callback")
+	// 6. Setup OAuth Providers
+	baseURL := "http://localhost:" + serverCfg.Port // TODO: Use real public URL from config if available
 
-	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, cfg)
+	var githubProvider ports.OAuthProvider = nil
+	if oauthCfg.GithubClientID != "" {
+		githubProvider = oauth.NewGitHubProvider(oauthCfg, baseURL+"/auth/github/callback")
+		log.Println("[INFO] GitHub OAuth Provider initialized")
+	}
 
-	// 7. Setup HTTP Server
+	var googleProvider ports.OAuthProvider = nil
+	if oauthCfg.GoogleClientID != "" {
+		googleProvider = oauth.NewGoogleProvider(oauthCfg, baseURL+"/auth/google/callback")
+		log.Println("[INFO] Google OAuth Provider initialized")
+	}
+
+	// 7. Setup Handlers
+	secureCookie := serverCfg.Port == "443"                                   // Simplistic
+	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "") // Empty domain for localhost/default
+
+	// Ensure providers are not nil if routes are hit, or handle gracefully.
+	// For MVP main.go, assuming they are set if we want to log in.
+	// To avoid panic if nil, NewAuthHandler should perhaps check?
+	// For now we pass them. If nil, the handler might panic if called.
+	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, sessionManager, secureCookie)
+
+	// 8. HTTP Server
 	mux := http.NewServeMux()
-
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -86,50 +134,74 @@ func main() {
 	mux.HandleFunc("/auth/google/login", authHandler.HandleGoogleLogin)
 	mux.HandleFunc("/auth/google/callback", authHandler.HandleGoogleCallback)
 	mux.HandleFunc("/auth/logout", authHandler.Logout)
-	mux.HandleFunc("/auth/me", authHandler.Me) // Debug
+	mux.HandleFunc("/auth/me", authHandler.Me)
+
+	// Sitemap Handler
+	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port) // TODO: Use public domain
+	mux.Handle("/sitemap.xml", sitemapHandler)
+
+	// Static Assets
+	// Serve /assets/dist/ from ./assets/dist directory
+	// In production, we might embed fs, but for now file server
+	fs := http.FileServer(http.Dir("./assets/dist"))
+	mux.Handle("/assets/dist/", http.StripPrefix("/assets/dist/", fs))
+
+	// robots.txt
+	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./assets/robots.txt")
+	})
+
+	// Home Page
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		// TODO: Pass context/session info if needed
+		home.Index().Render(r.Context(), w)
+	})
 
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
+		Addr:    ":" + serverCfg.Port,
 		Handler: mux,
 	}
 
-	// 7. Graceful Shutdown & Backup
+	// 9. Graceful Shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("Server listening on port %s", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			log.Fatalf("[FATAL] Server failed: %v", err)
 		}
 	}()
 
 	<-stop
-	log.Println("Shutting down server...")
+	log.Println("[INFO] Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server shutdown error: %v", err)
+	if err := server.Shutdown(ctxShutdown); err != nil {
+		log.Printf("[ERROR] Server shutdown error: %v", err)
 	}
 
-	// Close DB explicitly before backup
-	if err := repo.Close(); err != nil {
-		log.Printf("Error closing DB: %v", err)
-	} else {
-		log.Println("Pebble DB closed")
+	if dbCloser != nil {
+		dbCloser.Close()
+		log.Println("[INFO] DB closed")
 	}
 
-	// 8. S3 Backup
-	if s3Store != nil {
-		log.Println("Backing up DB to S3...")
-		if err := s3Store.Backup(context.Background(), cfg.DBPath); err != nil {
-			log.Printf("Error backing up to S3: %v", err)
+	// Backup if using S3 and Pebble
+	if s3Store != nil && pgCfg.URL == "" {
+		log.Println("[INFO] Backing up DB to S3...")
+		// Use Pebble Path
+		pebbleCfg := repository.LoadPebbleConfig() // reload or reuse
+		if err := s3Store.Backup(context.Background(), pebbleCfg.Path); err != nil {
+			log.Printf("[ERROR] Backup failed: %v", err)
 		} else {
-			log.Println("DB backed up to S3 successfully")
+			log.Println("[INFO] Backup successful")
 		}
 	}
 
-	log.Println("Server exited")
+	log.Println("[INFO] Server exited")
 }

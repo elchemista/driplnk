@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/elchemista/driplnk/internal/config"
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/google/uuid"
 )
@@ -15,21 +14,21 @@ var (
 )
 
 type AuthService struct {
-	userRepo domain.UserRepository
-	config   *config.Config
+	userRepo      domain.UserRepository
+	allowedEmails []string
 }
 
-func NewAuthService(userRepo domain.UserRepository, cfg *config.Config) *AuthService {
+func NewAuthService(userRepo domain.UserRepository, allowedEmails []string) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
-		config:   cfg,
+		userRepo:      userRepo,
+		allowedEmails: allowedEmails,
 	}
 }
 
 // LoginOrRegister handles the OAuth callback logic
 // It checks if email is allowed, creates user if new, or returns existing.
 func (s *AuthService) LoginOrRegister(ctx context.Context, email, handle, avatarURL string) (*domain.User, error) {
-	if !s.config.IsEmailAllowed(email) {
+	if !s.isEmailAllowed(email) {
 		return nil, ErrUserNotAllowed
 	}
 
@@ -42,7 +41,7 @@ func (s *AuthService) LoginOrRegister(ctx context.Context, email, handle, avatar
 	// If handle is empty or taken, we might need logic to generate one.
 	// For now, assuming handle comes from OAuth (like GitHub username).
 	// Ideally we should verify uniqueness.
-	
+
 	// Check handle uniqueness
 	if _, err := s.userRepo.GetByHandle(ctx, handle); err == nil {
 		// Handle taken. For simplicity, append random string or UUID
@@ -63,4 +62,13 @@ func (s *AuthService) LoginOrRegister(ctx context.Context, email, handle, avatar
 	}
 
 	return newUser, nil
+}
+
+func (s *AuthService) isEmailAllowed(email string) bool {
+	for _, allowed := range s.allowedEmails {
+		if allowed == "*" || allowed == email {
+			return true
+		}
+	}
+	return false
 }

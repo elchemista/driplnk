@@ -6,9 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/elchemista/driplnk/internal/config"
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/internal/service"
@@ -28,14 +26,40 @@ func (m *MockUserRepo) GetByHandle(ctx context.Context, handle string) (*domain.
 	return nil, nil
 }
 
+// Mock SessionManager
+type MockSessionManager struct {
+	SessionID string
+	Error     error
+}
+
+func (m *MockSessionManager) CreateSession(ctx context.Context, w http.ResponseWriter, userID string) error {
+	m.SessionID = userID
+	// Simulate setting cookie
+	http.SetCookie(w, &http.Cookie{Name: "user_session", Value: userID})
+	return m.Error
+}
+
+func (m *MockSessionManager) GetSession(r *http.Request) (string, error) {
+	return m.SessionID, m.Error
+}
+
+func (m *MockSessionManager) ClearSession(ctx context.Context, w http.ResponseWriter) error {
+	m.SessionID = ""
+	// Simulate clearing cookie
+	http.SetCookie(w, &http.Cookie{Name: "user_session", MaxAge: -1})
+	return m.Error
+}
+
 func TestAuthHandler_Logout(t *testing.T) {
 	// Setup
 	repo := &MockUserRepo{}
-	cfg := &config.Config{AllowedEmails: []string{"*"}}
-	authService := service.NewAuthService(repo, cfg)
+	allowedEmails := []string{"*"}
+	authService := service.NewAuthService(repo, allowedEmails)
+	mockSession := &MockSessionManager{SessionID: "existing-user"}
 
 	// Mocks (using nil for providers as Logout shouldn't use them)
-	handler := NewAuthHandler(authService, nil, nil, cfg)
+	// Secure = false for test
+	handler := NewAuthHandler(authService, nil, nil, mockSession, false)
 
 	// Case 1: DELETE request (Success)
 	req := httptest.NewRequest(http.MethodDelete, "/auth/logout", nil)
@@ -51,15 +75,19 @@ func TestAuthHandler_Logout(t *testing.T) {
 	found := false
 	for _, c := range cookies {
 		if c.Name == "user_session" {
-			if c.Expires.After(time.Now()) { // Should be in the past/zero
-				t.Error("cookie should be expired")
+			if c.MaxAge < 0 { // Should be expired/deleted
+				// Go's MaxAge < 0 means delete, but in checking headers we often see Expires in past
+				// Mock implementation set MaxAge: -1, which helper usually translates to Expires in past or Max-Age=0/negative
 			}
 			found = true
 		}
 	}
 	if !found {
-		// Go http.SetCookie adds to header, TestRecorder should capture it.
-		// If creating a new cookie with same name but empty value, valid behavior.
+		// Our mock sets it, so it should be there.
+	}
+
+	if mockSession.SessionID != "" {
+		t.Error("session should be cleared in manager")
 	}
 
 	// Case 2: POST request (Fail)
@@ -86,11 +114,12 @@ func (m *LocalMockProvider) GetUserInfo(ctx context.Context, token *ports.OAuthT
 
 func TestAuthHandler_LoginRedirect(t *testing.T) {
 	repo := &MockUserRepo{}
-	cfg := &config.Config{AllowedEmails: []string{"*"}, Port: "8080"}
-	authService := service.NewAuthService(repo, cfg)
+	allowedEmails := []string{"*"}
+	authService := service.NewAuthService(repo, allowedEmails)
 	mockGithub := &LocalMockProvider{AuthURL: "http://github.com/login"}
+	mockSession := &MockSessionManager{}
 
-	handler := NewAuthHandler(authService, mockGithub, nil, cfg)
+	handler := NewAuthHandler(authService, mockGithub, nil, mockSession, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/auth/github/login", nil)
 	rr := httptest.NewRecorder()

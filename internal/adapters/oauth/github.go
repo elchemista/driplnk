@@ -4,79 +4,40 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 
-	"github.com/elchemista/driplnk/internal/config"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
+
 	"github.com/elchemista/driplnk/internal/ports"
 )
 
 type GitHubProvider struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	config *oauth2.Config
 }
 
-func NewGitHubProvider(cfg *config.Config, redirectURL string) *GitHubProvider {
+func NewGitHubProvider(cfg *OAuthConfig, callbackURL string) *GitHubProvider {
 	return &GitHubProvider{
-		ClientID:     cfg.GithubClientID,
-		ClientSecret: cfg.GithubClientSecret,
-		RedirectURL:  redirectURL,
+		config: &oauth2.Config{
+			ClientID:     cfg.GithubClientID,
+			ClientSecret: cfg.GithubClientSecret,
+			RedirectURL:  callbackURL,
+			Scopes:       []string{"user:email", "read:user"},
+			Endpoint:     github.Endpoint,
+		},
 	}
 }
 
 func (p *GitHubProvider) GetAuthURL(state string) string {
-	return fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email&state=%s",
-		p.ClientID,
-		url.QueryEscape(p.RedirectURL),
-		state,
-	)
+	return p.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
 func (p *GitHubProvider) Exchange(ctx context.Context, code string) (*ports.OAuthToken, error) {
-	requestBodyMap := url.Values{}
-	requestBodyMap.Set("client_id", p.ClientID)
-	requestBodyMap.Set("client_secret", p.ClientSecret)
-	requestBodyMap.Set("code", code)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://github.com/login/oauth/access_token", nil)
+	token, err := p.config.Exchange(ctx, code)
 	if err != nil {
 		return nil, err
 	}
-	req.URL.RawQuery = requestBodyMap.Encode()
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	errorDesc, hasError := result["error_description"]
-	if hasError {
-		return nil, fmt.Errorf("github error: %v", errorDesc)
-	}
-
-	accessToken, ok := result["access_token"].(string)
-	if !ok {
-		return nil, fmt.Errorf("failed to get access token from response: %s", string(body))
-	}
-
-	return &ports.OAuthToken{
-		AccessToken: accessToken,
-	}, nil
+	return &ports.OAuthToken{AccessToken: token.AccessToken}, nil
 }
 
 func (p *GitHubProvider) GetUserInfo(ctx context.Context, token *ports.OAuthToken) (*ports.OAuthUser, error) {

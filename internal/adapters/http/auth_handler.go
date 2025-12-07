@@ -8,24 +8,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elchemista/driplnk/internal/config"
 	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/internal/service"
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
-	github      ports.OAuthProvider
-	google      ports.OAuthProvider
-	cfg         *config.Config
+	authService    *service.AuthService
+	github         ports.OAuthProvider
+	google         ports.OAuthProvider
+	sessionManager ports.SessionManager
+	secure         bool
 }
 
-func NewAuthHandler(authService *service.AuthService, github, google ports.OAuthProvider, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, github, google ports.OAuthProvider, sessionManager ports.SessionManager, secure bool) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		github:      github,
-		google:      google,
-		cfg:         cfg,
+		authService:    authService,
+		github:         github,
+		google:         google,
+		sessionManager: sessionManager,
+		secure:         secure,
 	}
 }
 
@@ -44,7 +45,7 @@ func (h *AuthHandler) HandleGithubLogin(w http.ResponseWriter, r *http.Request) 
 		Value:    state,
 		Expires:  time.Now().Add(10 * time.Minute),
 		HttpOnly: true,
-		Secure:   h.cfg.Port == "443", // Simplistic check, use env/config for secure flag
+		Secure:   h.secure,
 		Path:     "/",
 	})
 	http.Redirect(w, r, h.github.GetAuthURL(state), http.StatusTemporaryRedirect)
@@ -57,7 +58,7 @@ func (h *AuthHandler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) 
 		Value:    state,
 		Expires:  time.Now().Add(10 * time.Minute),
 		HttpOnly: true,
-		Secure:   h.cfg.Port == "443",
+		Secure:   h.secure,
 		Path:     "/",
 	})
 	http.Redirect(w, r, h.google.GetAuthURL(state), http.StatusTemporaryRedirect)
@@ -110,15 +111,11 @@ func (h *AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request, pro
 		return
 	}
 
-	// 5. Create Session (Simple Cookie for now, replace with JWT/Session Store later)
-	// Using a simple signed cookie or similar is better, but for MVP:
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_session",
-		Value:    string(user.ID), // In real app, sign this!
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,
-		Path:     "/",
-	})
+	// 5. Create Session
+	if err := h.sessionManager.CreateSession(r.Context(), w, string(user.ID)); err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
 
 	// Redirect to dashboard
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
@@ -130,14 +127,11 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Clear session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_session",
-		Value:    "",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Path:     "/",
-	})
+	// Clear session
+	if err := h.sessionManager.ClearSession(r.Context(), w); err != nil {
+		http.Error(w, "Failed to logout", http.StatusInternalServerError)
+		return
+	}
 
 	// If HTMX request, we might want to return a redirect header or partial
 	// For now standard redirect logic if needed, or 200 OK
@@ -147,13 +141,13 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 // Debug handler to check session
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("user_session")
-	if err != nil {
+	userID, err := h.sessionManager.GetSession(r)
+	if err != nil || userID == "" {
 		http.Error(w, "Not logged in", http.StatusUnauthorized)
 		return
 	}
 
 	// Ideally we fetch user from DB here
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"user_id": cookie.Value})
+	json.NewEncoder(w).Encode(map[string]string{"user_id": userID})
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"github.com/cockroachdb/pebble"
@@ -19,14 +20,16 @@ type PebbleRepository struct {
 	db *pebble.DB
 }
 
-func NewPebbleRepository(storagePath string) (*PebbleRepository, error) {
+func NewPebbleRepository(cfg *PebbleConfig) (*PebbleRepository, error) {
+	log.Printf("[INFO] Initializing PebbleDB at %s", cfg.Path)
 	opts := &pebble.Options{}
 	// Use a subdirectory for the db to avoid clutter
-	dbPath := filepath.Join(storagePath, "driplnk.db")
+	dbPath := filepath.Join(cfg.Path, "driplnk.db")
 	db, err := pebble.Open(dbPath, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open pebble db: %w", err)
 	}
+	log.Println("[INFO] PebbleDB Adapter initialized successfully")
 	return &PebbleRepository{db: db}, nil
 }
 

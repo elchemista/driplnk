@@ -13,7 +13,10 @@
 
 # Instruction.md
 
-/logloom/
+/assets/node_modules/
+/assets/dist/
+
+logloom/
 
 # Code coverage profiles and other test artifacts
 *.out
