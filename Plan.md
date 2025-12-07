@@ -114,9 +114,19 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
     *   `tailwindcss` (v4) via `@tailwindcss/cli`.
     *   `Hotwire` (Turbo & Stimulus) integration.
     *   `Templ` for type-safe Go templates.
+*   [x] **Hotwire Pages**:
+    *   Turbo-aware auth/logout redirects and helpers.
+    *   Login page with GitHub/Google OAuth.
+    *   Dashboard with Turbo Frame tabs (profile, links, theme, analytics).
+    *   Public profile page templated with theme preview.
 
 ### Pending
-*   [ ] Frontend Templates (Login, Dashboard, Public Profile) - *Started with Home/Layout*.
-*   [ ] Link CRUD Handlers.
-*   [ ] HTMX Integration.
-*   [ ] HTMX Integration.
+*   [ ] Link CRUD Handlers + Turbo streams for reordering.
+*   [ ] Persist profile/theme updates and wire forms to services.
+*   [ ] HTMX integration (if still desired alongside Turbo).
+
+## Current Work Plan
+
+1. Finish link CRUD endpoints and stream updates into dashboard frames.
+2. Persist profile/theme forms (repo/service wiring) and add validation.
+3. Decide on HTMX usage vs. pure Hotwire; document the choice and adjust assets accordingly.

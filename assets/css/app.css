@@ -1,5 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "daisyui";
+
+@source "../../views/**/*.templ";
 
 /* Custom styles can go here */

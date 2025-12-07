@@ -42,7 +42,7 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " | Driplnk</title><!-- Tailwind CSS (CDN for dev) --><script src=\"https://cdn.tailwindcss.com\"></script><link href=\"https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css\" rel=\"stylesheet\" type=\"text/css\"><!-- HTMX --><script src=\"https://unpkg.com/htmx.org@1.9.9\"></script><!-- Alpine.js (often paired with HTMX/Tailwind) --><script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js\"></script></head><body class=\"min-h-screen bg-base-200\"><div class=\"container mx-auto p-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " | Driplnk</title><link href=\"/assets/dist/app.css\" rel=\"stylesheet\" data-turbo-track=\"reload\"><script src=\"/assets/dist/app.js\" defer data-turbo-track=\"reload\"></script></head><body class=\"min-h-screen bg-base-200\"><div class=\"container mx-auto p-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

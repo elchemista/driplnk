@@ -1,0 +1,26 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main ./cmd/server"
+  bin = "./tmp/main"
+  full_bin = "./tmp/main"
+  include_ext = ["go", "templ"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules"]
+  exclude_regex = ["_test.go"]
+  delay = 1000
+  stop_on_error = true
+  send_interrupt = false
+  kill_delay = 500
+
+[log]
+  time = false
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  clean_on_exit = false

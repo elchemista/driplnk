@@ -42,7 +42,7 @@ func Base(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " | Driplnk</title><link href=\"/assets/dist/app.css\" rel=\"stylesheet\"><script src=\"/assets/dist/app.js\" defer></script><meta name=\"description\" content=\"Driplnk - Your centralized link manager\"></head><body class=\"min-h-screen bg-base-200\"><div class=\"container mx-auto px-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " | Driplnk</title><link href=\"/assets/dist/app.css\" rel=\"stylesheet\" data-turbo-track=\"reload\"><script src=\"/assets/dist/app.js\" defer data-turbo-track=\"reload\"></script><meta name=\"description\" content=\"Driplnk - Your centralized link manager\"></head><body class=\"min-h-screen bg-base-200\"><div class=\"container mx-auto px-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

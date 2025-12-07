@@ -38,6 +38,10 @@ func generateState() string {
 }
 
 func (h *AuthHandler) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
+	if h.github == nil {
+		http.Error(w, "GitHub OAuth is not configured", http.StatusServiceUnavailable)
+		return
+	}
 	state := generateState()
 	// In production, store state in a secure, HttpOnly cookie with expiration
 	http.SetCookie(w, &http.Cookie{
@@ -52,6 +56,10 @@ func (h *AuthHandler) HandleGithubLogin(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AuthHandler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	if h.google == nil {
+		http.Error(w, "Google OAuth is not configured", http.StatusServiceUnavailable)
+		return
+	}
 	state := generateState()
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
@@ -65,10 +73,18 @@ func (h *AuthHandler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AuthHandler) HandleGithubCallback(w http.ResponseWriter, r *http.Request) {
+	if h.github == nil {
+		http.Error(w, "GitHub OAuth is not configured", http.StatusServiceUnavailable)
+		return
+	}
 	h.handleCallback(w, r, h.github)
 }
 
 func (h *AuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	if h.google == nil {
+		http.Error(w, "Google OAuth is not configured", http.StatusServiceUnavailable)
+		return
+	}
 	h.handleCallback(w, r, h.google)
 }
 
@@ -118,7 +134,7 @@ func (h *AuthHandler) handleCallback(w http.ResponseWriter, r *http.Request, pro
 	}
 
 	// Redirect to dashboard
-	http.Redirect(w, r, "/dashboard", http.StatusFound)
+	TurboAwareRedirect(w, r, "/dashboard")
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +149,11 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If HTMX request, we might want to return a redirect header or partial
-	// For now standard redirect logic if needed, or 200 OK
+	if IsTurboRequest(r) {
+		TurboAwareRedirect(w, r, "/")
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Logged out"))
 }

@@ -1,0 +1,96 @@
+package profile
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/elchemista/driplnk/internal/domain"
+	"github.com/elchemista/driplnk/views/layout"
+)
+
+templ Page(user *domain.User) {
+	@layout.Base("Profile") {
+		@content(user)
+	}
+}
+
+// Frame variant for Turbo Frame requests (avoids duplicating the layout shell).
+templ Frame(user *domain.User) {
+	@content(user)
+}
+
+templ content(user *domain.User) {
+	<section class="py-12">
+		<div class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+			<div class="space-y-6 rounded-3xl border border-base-300 bg-base-100/70 p-8 shadow-xl backdrop-blur">
+				<div class="flex items-center gap-4">
+					if user.AvatarURL != "" {
+						<img src={ user.AvatarURL } alt={ user.Handle } class="h-20 w-20 rounded-2xl border border-base-300 object-cover shadow" loading="lazy"/>
+					} else {
+						<div class="flex h-20 w-20 items-center justify-center rounded-2xl border border-base-300 bg-base-200 text-3xl font-bold">
+							{ avatarInitial(user) }
+						</div>
+					}
+					<div class="space-y-1">
+						<p class="text-xs uppercase tracking-[0.2em] text-primary/80">Driplnk profile</p>
+						<h1 class="text-3xl font-bold">{ user.Title }</h1>
+						<p class="text-base-content/70">{"@"}{ user.Handle }</p>
+					</div>
+				</div>
+				<p class="text-base-content/80 leading-relaxed">{ user.Description }</p>
+
+				<div class="rounded-2xl border border-primary/20 bg-primary/10 p-5">
+					<p class="text-sm font-semibold text-primary">Live theme preview</p>
+					<p class="text-sm text-base-content/70">Layout: { user.Theme.LayoutStyle }, Background: { user.Theme.BackgroundStyle }, Primary: { user.Theme.PrimaryColor }</p>
+					<p class="text-sm text-base-content/70">Animations: Fade-in { strconv.FormatBool(user.Theme.FadeInAnimationEnabled) }, Logo { strconv.FormatBool(user.Theme.LogoAnimationEnabled) }</p>
+				</div>
+			</div>
+
+			<div class="space-y-4">
+				<turbo-frame id="profile-links" class="block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-lg">
+					<div class="flex items-center justify-between">
+						<h2 class="text-xl font-semibold">Featured links</h2>
+						<span class="badge badge-primary badge-outline">Turbo-ready</span>
+					</div>
+					<div class="mt-4 grid gap-3">
+						<div class="card bg-base-200/60 border border-base-300">
+							<div class="card-body gap-2">
+								<p class="text-sm uppercase tracking-wide text-primary/80">Primary Link</p>
+								<p class="text-lg font-semibold">Your main destination</p>
+								<p class="text-sm text-base-content/70">Hotwire swaps this block without reloading the page when you reorder links.</p>
+							</div>
+						</div>
+						<div class="card bg-base-200/40 border border-base-300">
+							<div class="card-body gap-2">
+								<p class="text-sm uppercase tracking-wide text-secondary/80">Social</p>
+								<p class="text-lg font-semibold">Social spotlight</p>
+								<p class="text-sm text-base-content/70">Add socials and products; Driplnk will render them with your theme.</p>
+							</div>
+						</div>
+					</div>
+				</turbo-frame>
+
+				<div class="rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-lg">
+					<h3 class="text-lg font-semibold">Meta</h3>
+					<div class="mt-3 grid gap-3 sm:grid-cols-2">
+						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
+							<p class="text-xs uppercase tracking-[0.2em] text-primary/70">Created</p>
+							<p class="text-sm text-base-content/80">{ user.CreatedAt.Format("Jan 02, 2006") }</p>
+						</div>
+						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
+							<p class="text-xs uppercase tracking-[0.2em] text-secondary/70">Updated</p>
+							<p class="text-sm text-base-content/80">{ user.UpdatedAt.Format("Jan 02, 2006") }</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+func avatarInitial(user *domain.User) string {
+	if user == nil || user.Handle == "" {
+		return "?"
+	}
+	return strings.ToUpper(string(user.Handle[0]))
+}

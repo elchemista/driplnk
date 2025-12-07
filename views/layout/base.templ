@@ -7,8 +7,8 @@ templ Base(title string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } | Driplnk</title>
-			<link href="/assets/dist/app.css" rel="stylesheet"/>
-			<script src="/assets/dist/app.js" defer></script>
+			<link href="/assets/dist/app.css" rel="stylesheet" data-turbo-track="reload"/>
+			<script src="/assets/dist/app.js" defer data-turbo-track="reload"></script>
 			<meta name="description" content="Driplnk - Your centralized link manager"/>
 		</head>
 		<body class="min-h-screen bg-base-200">
