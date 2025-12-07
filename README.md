@@ -16,6 +16,30 @@ A self-hosted link management platform built with Go, designed for speed, flexib
 *   `make build`: Build production binary and assets.
 *   `make generate`: Regenerate Templ files.
 
+### Database & migrations (dev)
+
+Dev defaults assume local Postgres with `postgres:postgres` on `localhost:5432`.
+
+**Create the DB manually**
+```bash
+createdb -h localhost -U postgres driplink || psql -h localhost -U postgres -c "CREATE DATABASE driplink"
+```
+
+2) Apply the schema to `driplink`:
+```bash
+export DATABASE_URL=postgres://postgres:postgres@localhost:5432/driplink?sslmode=disable
+go run ./cmd/migrate up
+```
+
+3) Run the app:
+```bash
+source .env
+make setup
+make dev
+```
+
+> Production: create the database manually and run migrations against it; skip the dev-only 000000 migration.
+
 ## Configuration
 
 Driplnk is designed to be modular. Configuration is handled via environment variables and JSON files.

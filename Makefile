@@ -1,11 +1,11 @@
 .PHONY: dev build run test clean setup
 
-# Development
+# Development (sources .env automatically)
 dev:
-	make -j3 dev-go dev-js dev-css
+	@bash -c 'set -a; [ -f .env ] && source .env; set +a; make -j3 dev-go dev-js dev-css'
 
 dev-go:
-	air
+	@bash -c 'set -a; [ -f .env ] && source .env; set +a; air'
 
 dev-js:
 	cd assets && npm run watch:js

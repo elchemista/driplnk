@@ -132,6 +132,7 @@ func main() {
 	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, sessionManager, secureCookie)
 	analyticsHandler := adapters_http.NewAnalyticsHandler(analyticsService)
 	analyticsMiddleware := adapters_http.NewAnalyticsMiddleware(analyticsService)
+	pageHandler := adapters_http.NewPageHandler(userRepo, sessionManager)
 
 	// 8. HTTP Server
 	mux := http.NewServeMux()
@@ -147,6 +148,11 @@ func main() {
 	mux.HandleFunc("/auth/google/callback", authHandler.HandleGoogleCallback)
 	mux.HandleFunc("/auth/logout", authHandler.Logout)
 	mux.HandleFunc("/auth/me", authHandler.Me)
+
+	// Page Routes
+	mux.HandleFunc("/login", analyticsMiddleware.TrackView(pageHandler.Login))
+	mux.HandleFunc("/dashboard", analyticsMiddleware.TrackView(pageHandler.Dashboard))
+	mux.HandleFunc("/u/{handle}", analyticsMiddleware.TrackView(pageHandler.Profile))
 
 	// Sitemap Handler
 	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port) // TODO: Use public domain
