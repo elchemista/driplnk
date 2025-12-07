@@ -44,7 +44,10 @@ func main() {
 	}
 
 	// 3. Setup Repository (Postgres or Pebble)
+	// 3. Setup Repository (Postgres or Pebble)
 	var userRepo domain.UserRepository
+	// var linkRepo domain.LinkRepository // TODO: Wire when Link CRUD handlers are implemented
+	var analyticsRepo domain.AnalyticsRepository
 	var dbCloser io.Closer
 
 	// Determine which DB to use based on env (Postgres takes precedence)
@@ -56,6 +59,8 @@ func main() {
 			log.Fatalf("[FATAL] Failed to initialize Postgres: %v", err)
 		}
 		userRepo = repo
+		// linkRepo = repo // TODO: Implement once LinkRepository is refactored
+		analyticsRepo = repo
 		dbCloser = repo
 	} else {
 		pebbleCfg := repository.LoadPebbleConfig()
@@ -74,6 +79,8 @@ func main() {
 			log.Fatalf("[FATAL] Failed to initialize PebbleDB: %v", err)
 		}
 		userRepo = repo
+		// linkRepo = repo // TODO: Implement once LinkRepository is refactored
+		analyticsRepo = repo
 		dbCloser = repo
 	}
 
@@ -84,6 +91,9 @@ func main() {
 	log.Printf("[INFO] Initializing AuthService with %d allowed email rules", len(allowedEmails))
 
 	authService := service.NewAuthService(userRepo, allowedEmails)
+
+	log.Println("[INFO] Initializing AnalyticsService")
+	analyticsService := service.NewAnalyticsService(analyticsRepo)
 
 	// 5. Setup Social Adapter (Load JSON Config)
 	// We assume config files are in ./config or specified dir
@@ -120,6 +130,8 @@ func main() {
 	// To avoid panic if nil, NewAuthHandler should perhaps check?
 	// For now we pass them. If nil, the handler might panic if called.
 	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, sessionManager, secureCookie)
+	analyticsHandler := adapters_http.NewAnalyticsHandler(analyticsService)
+	analyticsMiddleware := adapters_http.NewAnalyticsMiddleware(analyticsService)
 
 	// 8. HTTP Server
 	mux := http.NewServeMux()
@@ -140,6 +152,14 @@ func main() {
 	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port) // TODO: Use public domain
 	mux.Handle("/sitemap.xml", sitemapHandler)
 
+	// Analytics Routes
+	mux.HandleFunc("/api/analytics/scroll", analyticsHandler.RecordScroll)
+
+	// Link Redirect Handler (for tracking clicks)
+	// TODO: Wire LinkHandler when LinkRepository is available in context
+	// linkHandler := adapters_http.NewLinkHandler(linkRepo, analyticsService)
+	// mux.HandleFunc("/go/{id}", linkHandler.HandleRedirect)
+
 	// Static Assets
 	// Serve /assets/dist/ from ./assets/dist directory
 	// In production, we might embed fs, but for now file server
@@ -151,15 +171,15 @@ func main() {
 		http.ServeFile(w, r, "./assets/robots.txt")
 	})
 
-	// Home Page
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// Home Page (with analytics tracking)
+	mux.HandleFunc("/", analyticsMiddleware.TrackView(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
 		// TODO: Pass context/session info if needed
 		home.Index().Render(r.Context(), w)
-	})
+	}))
 
 	server := &http.Server{
 		Addr:    ":" + serverCfg.Port,

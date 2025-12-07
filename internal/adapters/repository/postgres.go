@@ -265,7 +265,7 @@ func (r *PostgresRepository) ListLinksByUser(ctx context.Context, userID domain.
 	return links, nil
 }
 
-func (r *PostgresRepository) DeleteLink(ctx context.Context, id domain.LinkID) error {
+func (r *PostgresRepository) Delete(ctx context.Context, id domain.LinkID) error {
 	query := `DELETE FROM links WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
