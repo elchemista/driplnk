@@ -1,0 +1,51 @@
+[
+    {
+        "name": "Facebook",
+        "domain": "facebook.com",
+        "regex_pattern": "(?i)(facebook\\.com|fb\\.com)",
+        "icon_svg": "facebook_icon_svg_here",
+        "color": "#1877F2"
+    },
+    {
+        "name": "Twitter",
+        "domain": "twitter.com",
+        "regex_pattern": "(?i)(twitter\\.com|x\\.com)",
+        "icon_svg": "twitter_icon_svg_here",
+        "color": "#1DA1F2"
+    },
+    {
+        "name": "Instagram",
+        "domain": "instagram.com",
+        "regex_pattern": "(?i)(instagram\\.com)",
+        "icon_svg": "instagram_icon_svg_here",
+        "color": "#E1306C"
+    },
+    {
+        "name": "LinkedIn",
+        "domain": "linkedin.com",
+        "regex_pattern": "(?i)(linkedin\\.com)",
+        "icon_svg": "linkedin_icon_svg_here",
+        "color": "#0077B5"
+    },
+    {
+        "name": "YouTube",
+        "domain": "youtube.com",
+        "regex_pattern": "(?i)(youtube\\.com|youtu\\.be)",
+        "icon_svg": "youtube_icon_svg_here",
+        "color": "#FF0000"
+    },
+    {
+        "name": "GitHub",
+        "domain": "github.com",
+        "regex_pattern": "(?i)(github\\.com)",
+        "icon_svg": "github_icon_svg_here",
+        "color": "#181717"
+    },
+    {
+        "name": "TikTok",
+        "domain": "tiktok.com",
+        "regex_pattern": "(?i)(tiktok\\.com)",
+        "icon_svg": "tiktok_icon_svg_here",
+        "color": "#000000"
+    }
+]
