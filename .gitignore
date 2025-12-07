@@ -15,7 +15,7 @@
 
 /assets/node_modules/
 /assets/dist/
-
+/data/
 logloom/
 
 # Code coverage profiles and other test artifacts
