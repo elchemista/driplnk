@@ -19,6 +19,14 @@ templ Page(user *domain.User, tab string, links []*domain.Link, summary *domain.
 					<h1 class="text-3xl font-bold leading-tight">Welcome back, { userDisplayName(user) }</h1>
 					<p class="text-base-content/70">Manage your profile, links, and theme without leaving the page.</p>
 				</div>
+				<div>
+					<a href={ templ.SafeURL("/" + user.Handle) } target="_blank" class="btn btn-primary btn-sm gap-2">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+						</svg>
+						View Profile
+					</a>
+				</div>
 			</div>
 
 			<div class="mt-8 grid gap-4 sm:grid-cols-3">
@@ -257,6 +265,13 @@ templ linkItem(link *domain.Link) {
 				</div>
 				<div class="flex items-center gap-2">
 					<span class="badge badge-outline badge-sm">{ string(link.Type) }</span>
+					<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
+						<button type="submit" class="btn btn-ghost btn-sm text-info" title="Refresh metadata">
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+							</svg>
+						</button>
+					</form>
 					<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
 						<button type="submit" class="btn btn-ghost btn-sm text-error">Delete</button>
 					</form>

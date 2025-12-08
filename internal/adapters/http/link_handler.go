@@ -332,6 +332,47 @@ func (h *LinkHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 	TurboAwareRedirect(w, r, "/dashboard?tab=links")
 }
 
+// RefreshLinkMetadata handles POST /dashboard/links/{id}/refresh
+func (h *LinkHandler) RefreshLinkMetadata(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, err := h.getCurrentUser(r)
+	if err != nil || user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	linkID := domain.LinkID(r.PathValue("id"))
+	if linkID == "" {
+		http.Error(w, "Link ID required", http.StatusBadRequest)
+		return
+	}
+
+	link, err := h.linkSvc.RefreshMetadata(r.Context(), linkID, user.ID)
+	if err != nil {
+		log.Printf("[ERR] Failed to refresh metadata: %v", err)
+		respondError(w, r, "Failed to refresh metadata", http.StatusInternalServerError)
+		return
+	}
+
+	if IsTurboRequest(r) {
+		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
+		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
+  <template>
+    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
+      <span>Metadata refreshed for %s!</span>
+    </div>
+  </template>
+</turbo-stream>`, link.Title)
+		return
+	}
+
+	TurboAwareRedirect(w, r, "/dashboard?tab=links")
+}
+
 // ReorderLinks handles POST /dashboard/links/reorder
 func (h *LinkHandler) ReorderLinks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

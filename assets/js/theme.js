@@ -10,22 +10,33 @@ if (document.readyState === "loading") {
 }
 
 function initTheme() {
-    // Only intervene if system usage is indicated (e.g. by emptiness or explicit attribute)
-    // We check for data-theme-preference="system"
     const html = document.documentElement;
+    const currentTheme = html.getAttribute("data-theme");
     const pref = html.getAttribute("data-theme-preference");
 
-    if (pref === "system") {
+    console.log("[Theme] Initializing theme", { currentTheme, pref });
+
+    // If theme is explicitly set (light/dark), use it directly - already applied by data-theme
+    if (currentTheme && currentTheme !== "" && currentTheme !== "system") {
+        console.log(`[Theme] Using explicit theme: ${currentTheme}`);
+        // The data-theme attribute is already set correctly in the HTML
+        return;
+    }
+
+    // Only apply system theme if preference is "system"
+    if (pref === "system" || currentTheme === "system" || currentTheme === "") {
+        console.log("[Theme] Applying system theme");
         applySystemTheme();
         // Listen for OS changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySystemTheme);
-    } else {
-        // If hardcoded light/dark, remove listener if exists? 
-        // For simplicity, just leave it.
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.removeEventListener('change', applySystemTheme);
+        mediaQuery.addEventListener('change', applySystemTheme);
     }
 }
 
 function applySystemTheme() {
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    const theme = isDark ? 'dark' : 'light';
+    console.log(`[Theme] System preference: ${theme}`);
+    document.documentElement.setAttribute('data-theme', theme);
 }

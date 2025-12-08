@@ -127,6 +127,33 @@ func (h *PageHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ProfileByPath is used for catch-all routing from root path
+func (h *PageHandler) ProfileByPath(w http.ResponseWriter, r *http.Request, handle string) {
+	if handle == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	user, err := h.users.GetByHandle(r.Context(), handle)
+	if err != nil || user == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Fetch user's links for profile display
+	links, err := h.linkSvc.ListLinks(r.Context(), user.ID)
+	if err != nil {
+		links = []*domain.Link{}
+	}
+
+	ctx := context.WithValue(r.Context(), domain.CtxKeyTargetUserID, string(user.ID))
+	*r = *r.WithContext(ctx)
+
+	if err := RenderComponent(ctx, w, r, profile.Page(user, links), profile.Frame(user, links)); err != nil {
+		http.Error(w, "failed to render profile", http.StatusInternalServerError)
+	}
+}
+
 func (h *PageHandler) currentUser(r *http.Request) (*domain.User, error) {
 	sessionUserID, err := h.sessions.GetSession(r)
 	if err != nil || sessionUserID == "" {

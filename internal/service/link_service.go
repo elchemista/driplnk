@@ -11,15 +11,19 @@ import (
 
 // LinkService encapsulates link business logic.
 type LinkService struct {
-	repo domain.LinkRepository
+	repo            domain.LinkRepository
+	metadataFetcher domain.MetadataFetcher
 }
 
-func NewLinkService(repo domain.LinkRepository) *LinkService {
-	return &LinkService{repo: repo}
+func NewLinkService(repo domain.LinkRepository, metadataFetcher domain.MetadataFetcher) *LinkService {
+	return &LinkService{
+		repo:            repo,
+		metadataFetcher: metadataFetcher,
+	}
 }
 
 // CreateLink creates a new link for a user.
-// It automatically sets the order to be last in the list.
+// It automatically sets the order to be last in the list and fetches metadata.
 func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, title, url string, linkType domain.LinkType) (*domain.Link, error) {
 	if title == "" {
 		return nil, fmt.Errorf("link title is required")
@@ -54,8 +58,79 @@ func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, titl
 		UpdatedAt: now,
 	}
 
+	// Fetch metadata from the URL if fetcher is available
+	if s.metadataFetcher != nil {
+		fmt.Printf("[INFO] Fetching metadata for URL: %s\n", url)
+		metadata, err := s.metadataFetcher.Fetch(ctx, url)
+		if err != nil {
+			// Log the error but continue - metadata is optional
+			fmt.Printf("[WARN] Failed to fetch metadata for %s: %v\n", url, err)
+		} else if metadata != nil {
+			// Store metadata in the link
+			if metadata.Title != "" {
+				link.Metadata["og:title"] = metadata.Title
+			}
+			if metadata.Description != "" {
+				link.Metadata["og:description"] = metadata.Description
+			}
+			if metadata.ImageURL != "" {
+				link.Metadata["og:image"] = metadata.ImageURL
+			}
+			fmt.Printf("[INFO] Stored metadata for %s: title=%s, has_image=%v\n",
+				url, metadata.Title, metadata.ImageURL != "")
+		}
+	}
+
 	if err := s.repo.Save(ctx, link); err != nil {
 		return nil, fmt.Errorf("failed to save link: %w", err)
+	}
+
+	return link, nil
+}
+
+// RefreshMetadata refetches metadata for an existing link
+func (s *LinkService) RefreshMetadata(ctx context.Context, linkID domain.LinkID, userID domain.UserID) (*domain.Link, error) {
+	link, err := s.repo.GetByID(ctx, linkID)
+	if err != nil {
+		return nil, fmt.Errorf("link not found: %w", err)
+	}
+
+	// Verify ownership
+	if link.UserID != userID {
+		return nil, fmt.Errorf("unauthorized: link does not belong to user")
+	}
+
+	// Fetch fresh metadata if fetcher is available
+	if s.metadataFetcher != nil {
+		fmt.Printf("[INFO] Refreshing metadata for URL: %s\n", link.URL)
+		metadata, err := s.metadataFetcher.Fetch(ctx, link.URL)
+		if err != nil {
+			fmt.Printf("[WARN] Failed to refresh metadata for %s: %v\n", link.URL, err)
+			return nil, fmt.Errorf("failed to fetch metadata: %w", err)
+		}
+
+		// Update metadata
+		if link.Metadata == nil {
+			link.Metadata = make(map[string]string)
+		}
+
+		if metadata.Title != "" {
+			link.Metadata["og:title"] = metadata.Title
+		}
+		if metadata.Description != "" {
+			link.Metadata["og:description"] = metadata.Description
+		}
+		if metadata.ImageURL != "" {
+			link.Metadata["og:image"] = metadata.ImageURL
+		}
+
+		fmt.Printf("[INFO] Refreshed metadata for %s: title=%s, desc=%s, image=%s\n",
+			link.URL, metadata.Title, metadata.Description, metadata.ImageURL)
+
+		link.UpdatedAt = time.Now()
+		if err := s.repo.Save(ctx, link); err != nil {
+			return nil, fmt.Errorf("failed to save updated metadata: %w", err)
+		}
 	}
 
 	return link, nil

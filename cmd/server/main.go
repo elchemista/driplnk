@@ -13,6 +13,7 @@ import (
 	adapters_http "github.com/elchemista/driplnk/internal/adapters/http"
 	"github.com/elchemista/driplnk/internal/adapters/oauth"
 	"github.com/elchemista/driplnk/internal/adapters/repository"
+	"github.com/elchemista/driplnk/internal/adapters/seo"
 	"github.com/elchemista/driplnk/internal/adapters/social"
 	"github.com/elchemista/driplnk/internal/adapters/storage"
 	"github.com/elchemista/driplnk/internal/config"
@@ -96,8 +97,11 @@ func main() {
 	log.Println("[INFO] Initializing AnalyticsService")
 	analyticsService := service.NewAnalyticsService(analyticsRepo)
 
-	log.Println("[INFO] Initializing LinkService")
-	linkService := service.NewLinkService(linkRepo)
+	log.Println("[INFO] Initializing HTMLFetcher for metadata extraction")
+	metadataFetcher := seo.NewHTMLFetcher()
+
+	log.Println("[INFO] Initializing LinkService with metadata fetching")
+	linkService := service.NewLinkService(linkRepo, metadataFetcher)
 
 	// 5. Setup Social Adapter (Load JSON Config)
 	configDir := "config"
@@ -153,7 +157,6 @@ func main() {
 	// Page Routes
 	mux.HandleFunc("/login", analyticsMiddleware.TrackView(pageHandler.Login))
 	mux.HandleFunc("/dashboard", analyticsMiddleware.TrackView(pageHandler.Dashboard))
-	mux.HandleFunc("/u/{handle}", analyticsMiddleware.TrackView(pageHandler.Profile))
 
 	// Dashboard Profile/SEO/Theme Routes
 	mux.HandleFunc("POST /dashboard/profile", userHandler.UpdateProfile)
@@ -164,6 +167,7 @@ func main() {
 	mux.HandleFunc("POST /dashboard/links", linkHandler.CreateLink)
 	mux.HandleFunc("POST /dashboard/links/{id}", linkHandler.UpdateLink)
 	mux.HandleFunc("POST /dashboard/links/{id}/delete", linkHandler.DeleteLink)
+	mux.HandleFunc("POST /dashboard/links/{id}/refresh", linkHandler.RefreshLinkMetadata)
 	mux.HandleFunc("POST /dashboard/links/reorder", linkHandler.ReorderLinks)
 
 	// Link Redirect Handler (for tracking clicks)
@@ -187,11 +191,21 @@ func main() {
 
 	// Home Page (with analytics tracking)
 	mux.HandleFunc("/", analyticsMiddleware.TrackView(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			adapters_http.RespondNotFound(w, r, "Page")
+		// If root path, show home page
+		if r.URL.Path == "/" {
+			home.Index().Render(r.Context(), w)
 			return
 		}
-		home.Index().Render(r.Context(), w)
+
+		// Otherwise, try to match as a user profile handle
+		handle := r.URL.Path[1:] // Remove leading slash
+		if handle != "" {
+			// Try to render profile
+			pageHandler.ProfileByPath(w, r, handle)
+			return
+		}
+
+		adapters_http.RespondNotFound(w, r, "Page")
 	}))
 
 	// Wrap mux with middleware chain
