@@ -44,9 +44,8 @@ func main() {
 	}
 
 	// 3. Setup Repository (Postgres or Pebble)
-	// 3. Setup Repository (Postgres or Pebble)
 	var userRepo domain.UserRepository
-	// var linkRepo domain.LinkRepository // TODO: Wire when Link CRUD handlers are implemented
+	var linkRepo domain.LinkRepository
 	var analyticsRepo domain.AnalyticsRepository
 	var dbCloser io.Closer
 
@@ -59,9 +58,10 @@ func main() {
 			log.Fatalf("[FATAL] Failed to initialize Postgres: %v", err)
 		}
 		userRepo = repo
-		// linkRepo = repo // TODO: Implement once LinkRepository is refactored
+		linkRepo = repository.NewPostgresLinkRepository(repo)
 		analyticsRepo = repo
 		dbCloser = repo
+		log.Println("[INFO] Using PostgreSQL as database backend")
 	} else {
 		pebbleCfg := repository.LoadPebbleConfig()
 		// If S3 is enabled and we are using Pebble, try restore first
@@ -79,9 +79,10 @@ func main() {
 			log.Fatalf("[FATAL] Failed to initialize PebbleDB: %v", err)
 		}
 		userRepo = repo
-		// linkRepo = repo // TODO: Implement once LinkRepository is refactored
+		linkRepo = repository.NewPebbleLinkRepository(repo)
 		analyticsRepo = repo
 		dbCloser = repo
+		log.Println("[INFO] Using PebbleDB as database backend")
 	}
 
 	// 4. Setup Services
@@ -95,19 +96,21 @@ func main() {
 	log.Println("[INFO] Initializing AnalyticsService")
 	analyticsService := service.NewAnalyticsService(analyticsRepo)
 
+	log.Println("[INFO] Initializing LinkService")
+	linkService := service.NewLinkService(linkRepo)
+
 	// 5. Setup Social Adapter (Load JSON Config)
-	// We assume config files are in ./config or specified dir
-	configDir := "config" // Could be env var
+	configDir := "config"
 	var socialConfigs []config.SocialPlatformConfig
 	if err := config.LoadJSONConfig(configDir+"/socials.json", &socialConfigs); err != nil {
 		log.Printf("[WARN] Failed to load socials.json: %v", err)
 	} else {
 		log.Printf("[INFO] Loaded %d social platform configs", len(socialConfigs))
 	}
-	_ = social.NewSocialAdapter(socialConfigs) // currently unused but wired
+	_ = social.NewSocialAdapter(socialConfigs)
 
 	// 6. Setup OAuth Providers
-	baseURL := "http://localhost:" + serverCfg.Port // TODO: Use real public URL from config if available
+	baseURL := "http://localhost:" + serverCfg.Port
 
 	var githubProvider ports.OAuthProvider = nil
 	if oauthCfg.GithubClientID != "" {
@@ -122,17 +125,15 @@ func main() {
 	}
 
 	// 7. Setup Handlers
-	secureCookie := serverCfg.Port == "443"                                   // Simplistic
-	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "") // Empty domain for localhost/default
+	secureCookie := serverCfg.Port == "443"
+	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "")
 
-	// Ensure providers are not nil if routes are hit, or handle gracefully.
-	// For MVP main.go, assuming they are set if we want to log in.
-	// To avoid panic if nil, NewAuthHandler should perhaps check?
-	// For now we pass them. If nil, the handler might panic if called.
 	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, sessionManager, secureCookie)
 	analyticsHandler := adapters_http.NewAnalyticsHandler(analyticsService)
 	analyticsMiddleware := adapters_http.NewAnalyticsMiddleware(analyticsService)
-	pageHandler := adapters_http.NewPageHandler(userRepo, sessionManager)
+	pageHandler := adapters_http.NewPageHandler(userRepo, sessionManager, linkService, analyticsService)
+	userHandler := adapters_http.NewUserHandler(userRepo, sessionManager)
+	linkHandler := adapters_http.NewLinkHandler(linkService, analyticsService, sessionManager, userRepo)
 
 	// 8. HTTP Server
 	mux := http.NewServeMux()
@@ -154,21 +155,28 @@ func main() {
 	mux.HandleFunc("/dashboard", analyticsMiddleware.TrackView(pageHandler.Dashboard))
 	mux.HandleFunc("/u/{handle}", analyticsMiddleware.TrackView(pageHandler.Profile))
 
+	// Dashboard Profile/SEO/Theme Routes
+	mux.HandleFunc("POST /dashboard/profile", userHandler.UpdateProfile)
+	mux.HandleFunc("POST /dashboard/seo", userHandler.UpdateSEO)
+	mux.HandleFunc("POST /dashboard/theme", userHandler.UpdateTheme)
+
+	// Dashboard Link Routes
+	mux.HandleFunc("POST /dashboard/links", linkHandler.CreateLink)
+	mux.HandleFunc("POST /dashboard/links/{id}", linkHandler.UpdateLink)
+	mux.HandleFunc("POST /dashboard/links/{id}/delete", linkHandler.DeleteLink)
+	mux.HandleFunc("POST /dashboard/links/reorder", linkHandler.ReorderLinks)
+
+	// Link Redirect Handler (for tracking clicks)
+	mux.HandleFunc("/go/{id}", linkHandler.HandleRedirect)
+
 	// Sitemap Handler
-	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port) // TODO: Use public domain
+	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port)
 	mux.Handle("/sitemap.xml", sitemapHandler)
 
 	// Analytics Routes
 	mux.HandleFunc("/api/analytics/scroll", analyticsHandler.RecordScroll)
 
-	// Link Redirect Handler (for tracking clicks)
-	// TODO: Wire LinkHandler when LinkRepository is available in context
-	// linkHandler := adapters_http.NewLinkHandler(linkRepo, analyticsService)
-	// mux.HandleFunc("/go/{id}", linkHandler.HandleRedirect)
-
 	// Static Assets
-	// Serve /assets/dist/ from ./assets/dist directory
-	// In production, we might embed fs, but for now file server
 	fs := http.FileServer(http.Dir("./assets/dist"))
 	mux.Handle("/assets/dist/", http.StripPrefix("/assets/dist/", fs))
 
@@ -183,7 +191,6 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		// TODO: Pass context/session info if needed
 		home.Index().Render(r.Context(), w)
 	}))
 
@@ -220,8 +227,7 @@ func main() {
 	// Backup if using S3 and Pebble
 	if s3Store != nil && pgCfg.URL == "" {
 		log.Println("[INFO] Backing up DB to S3...")
-		// Use Pebble Path
-		pebbleCfg := repository.LoadPebbleConfig() // reload or reuse
+		pebbleCfg := repository.LoadPebbleConfig()
 		if err := s3Store.Backup(context.Background(), pebbleCfg.Path); err != nil {
 			log.Printf("[ERROR] Backup failed: %v", err)
 		} else {

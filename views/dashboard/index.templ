@@ -2,20 +2,24 @@ package dashboard
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/views/layout"
 )
 
-templ Page(user *domain.User, tab string) {
+templ Page(user *domain.User, tab string, links []*domain.Link, summary *domain.AnalyticsSummary) {
 	@layout.Base("Dashboard") {
 		<section class="py-10">
-				<div class="flex flex-wrap items-center justify-between gap-4">
-					<div>
-						<p class="text-xs uppercase tracking-[0.2em] text-primary/80">Dashboard</p>
-						<h1 class="text-3xl font-bold leading-tight">Welcome back, { userDisplayName(user) }</h1>
-						<p class="text-base-content/70">Manage your profile, links, and theme without leaving the page.</p>
-					</div>
+			<!-- Flash messages container -->
+			<div id="flash-messages" class="mb-4"></div>
+
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div>
+					<p class="text-xs uppercase tracking-[0.2em] text-primary/80">Dashboard</p>
+					<h1 class="text-3xl font-bold leading-tight">Welcome back, { userDisplayName(user) }</h1>
+					<p class="text-base-content/70">Manage your profile, links, and theme without leaving the page.</p>
+				</div>
 				<div class="flex items-center gap-2">
 					<span class="badge badge-primary badge-outline">Hotwire</span>
 					<span class="badge badge-secondary badge-outline">Turbo Frames</span>
@@ -26,237 +30,296 @@ templ Page(user *domain.User, tab string) {
 			<div class="mt-8 grid gap-4 sm:grid-cols-3">
 				<div class="rounded-2xl border border-base-300 bg-base-100/70 p-4 shadow">
 					<p class="text-sm text-base-content/60">Profile completeness</p>
-					<p class="text-2xl font-bold">80%</p>
+					<p class="text-2xl font-bold">{ profileCompleteness(user) }%</p>
 					<p class="text-xs text-base-content/60">Auto-updates when forms are submitted via Turbo.</p>
 				</div>
 				<div class="rounded-2xl border border-base-300 bg-base-100/70 p-4 shadow">
 					<p class="text-sm text-base-content/60">Links published</p>
-					<p class="text-2xl font-bold">12</p>
+					<p class="text-2xl font-bold">{ strconv.Itoa(len(links)) }</p>
 					<p class="text-xs text-base-content/60">Live reorder streams will land here.</p>
 				</div>
 				<div class="rounded-2xl border border-base-300 bg-base-100/70 p-4 shadow">
 					<p class="text-sm text-base-content/60">Visits this week</p>
-					<p class="text-2xl font-bold">2.4k</p>
+					<p class="text-2xl font-bold">{ formatCount(summary.TotalViews) }</p>
 					<p class="text-xs text-base-content/60">Analytics events are collected server-side.</p>
 				</div>
 			</div>
 
 			<turbo-frame id="dashboard-content" class="mt-8 block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-xl">
-				@body(user, tab)
+				@body(user, tab, links, summary)
 			</turbo-frame>
 		</section>
 	}
 }
 
-templ Frame(user *domain.User, tab string) {
-	@body(user, tab)
+templ Frame(user *domain.User, tab string, links []*domain.Link, summary *domain.AnalyticsSummary) {
+	@body(user, tab, links, summary)
 }
 
-templ body(user *domain.User, tab string) {
+templ body(user *domain.User, tab string, links []*domain.Link, summary *domain.AnalyticsSummary) {
 	<div data-controller="tabs" data-tabs-frame-id-value="dashboard-content" data-tabs-active-value={ tab } class="space-y-6">
-			<div class="tabs tabs-lifted">
-				<a class={ tabClasses(tab, "profile") } href="/dashboard?tab=profile" data-action="click->tabs#visit" data-tabs-tab-param="profile" data-turbo-frame="dashboard-content">Profile & SEO</a>
-				<a class={ tabClasses(tab, "links") } href="/dashboard?tab=links" data-action="click->tabs#visit" data-tabs-tab-param="links" data-turbo-frame="dashboard-content">Links</a>
-				<a class={ tabClasses(tab, "theme") } href="/dashboard?tab=theme" data-action="click->tabs#visit" data-tabs-tab-param="theme" data-turbo-frame="dashboard-content">Theme</a>
-				<a class={ tabClasses(tab, "analytics") } href="/dashboard?tab=analytics" data-action="click->tabs#visit" data-tabs-tab-param="analytics" data-turbo-frame="dashboard-content">Analytics</a>
-			</div>
+		<div class="tabs tabs-lifted">
+			<a class={ tabClasses(tab, "profile") } href="/dashboard?tab=profile" data-action="click->tabs#visit" data-tabs-tab-param="profile" data-turbo-frame="dashboard-content">Profile & SEO</a>
+			<a class={ tabClasses(tab, "links") } href="/dashboard?tab=links" data-action="click->tabs#visit" data-tabs-tab-param="links" data-turbo-frame="dashboard-content">Links</a>
+			<a class={ tabClasses(tab, "theme") } href="/dashboard?tab=theme" data-action="click->tabs#visit" data-tabs-tab-param="theme" data-turbo-frame="dashboard-content">Theme</a>
+			<a class={ tabClasses(tab, "analytics") } href="/dashboard?tab=analytics" data-action="click->tabs#visit" data-tabs-tab-param="analytics" data-turbo-frame="dashboard-content">Analytics</a>
+		</div>
 
-			if tab == "links" {
-				<div class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-					<div class="space-y-3">
-						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
-							<p class="text-sm font-semibold">Your links</p>
-							<p class="text-sm text-base-content/70">Turbo replaces this panel when you reorder or edit a link.</p>
-						</div>
-						<div class="grid gap-3">
-							for i := 1; i <= 3; i++ {
-								<div class="card border border-base-300 bg-base-100 shadow-sm">
-									<div class="card-body gap-2">
-										<p class="text-xs uppercase tracking-[0.2em] text-primary/70">Link #{ i }</p>
-										<div class="flex flex-wrap items-center justify-between gap-2">
-											<div>
-											<p class="text-lg font-semibold">Placeholder title</p>
-											<p class="text-sm text-base-content/70">https://driplnk.app/your-link</p>
-										</div>
-										<div class="flex items-center gap-2">
-											<button type="button" class="btn btn-ghost btn-sm">Edit</button>
-											<button type="button" class="btn btn-outline btn-sm">Preview</button>
-										</div>
-									</div>
-								</div>
-							</div>
+		if tab == "links" {
+			@linksTab(user, links)
+		} else if tab == "theme" {
+			@themeTab(user)
+		} else if tab == "analytics" {
+			@analyticsTab(user, summary)
+		} else {
+			@profileTab(user)
+		}
+	</div>
+}
+
+templ profileTab(user *domain.User) {
+	<div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+		<div class="space-y-4 rounded-2xl border border-base-300 bg-base-200/60 p-5">
+			<p class="text-sm font-semibold">Profile basics</p>
+			<form class="grid gap-3 md:grid-cols-2" method="post" action="/dashboard/profile">
+				<label class="form-control">
+					<span class="label-text">Title</span>
+					<input class="input input-bordered" name="title" value={ user.Title } placeholder="Creator, Founder, Developer"/>
+				</label>
+				<label class="form-control">
+					<span class="label-text">Handle</span>
+					<input class="input input-bordered" name="handle" value={ user.Handle } placeholder="handle"/>
+				</label>
+				<label class="form-control md:col-span-2">
+					<span class="label-text">Description</span>
+					<textarea class="textarea textarea-bordered" name="description" rows="3">{ user.Description }</textarea>
+				</label>
+				<label class="form-control md:col-span-2">
+					<span class="label-text">Avatar URL</span>
+					<input class="input input-bordered" name="avatar" value={ user.AvatarURL } placeholder="https://"/>
+				</label>
+				<div class="md:col-span-2 flex justify-end gap-2">
+					<button type="reset" class="btn btn-ghost">Discard</button>
+					<button type="submit" class="btn btn-primary">Save profile</button>
+				</div>
+			</form>
+		</div>
+		<div class="space-y-4">
+			<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
+				<p class="text-sm font-semibold">SEO</p>
+				<form class="space-y-3" method="post" action="/dashboard/seo">
+					<label class="form-control">
+						<span class="label-text">Meta title</span>
+						<input class="input input-bordered" name="seo_title" value={ user.SEOMeta.Title } placeholder="Profile title"/>
+					</label>
+					<label class="form-control">
+						<span class="label-text">Meta description</span>
+						<textarea class="textarea textarea-bordered" name="seo_description" rows="2">{ user.SEOMeta.Description }</textarea>
+					</label>
+					<label class="form-control">
+						<span class="label-text">OG Image URL</span>
+						<input class="input input-bordered" name="seo_image" value={ user.SEOMeta.ImageURL } placeholder="https://cdn..."/>
+					</label>
+					<div class="flex justify-end">
+						<button type="submit" class="btn btn-primary btn-sm">Save SEO</button>
+					</div>
+				</form>
+			</div>
+			<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
+				<p class="text-sm font-semibold">Session</p>
+				<p class="text-sm text-base-content/70">Turbo-aware redirects keep you in the dashboard after OAuth.</p>
+				<div class="mt-3">
+					<a href="/auth/logout" class="btn btn-ghost btn-sm text-error">Logout</a>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ linksTab(user *domain.User, links []*domain.Link) {
+	<div class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+		<div class="space-y-3">
+			<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
+				<p class="text-sm font-semibold">Your links</p>
+				<p class="text-sm text-base-content/70">Turbo replaces this panel when you reorder or edit a link.</p>
+			</div>
+			<div id="links-list" class="grid gap-3">
+				if len(links) == 0 {
+					<div class="text-center py-8 text-base-content/60">
+						<p>No links yet. Add your first link!</p>
+					</div>
+				} else {
+					for _, link := range links {
+						@linkItem(link)
+					}
+				}
+			</div>
+		</div>
+		<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
+			<p class="text-sm font-semibold">Add a link</p>
+			<form id="add-link-form" class="space-y-3" method="post" action="/dashboard/links">
+				<label class="form-control">
+					<span class="label-text">Title</span>
+					<input class="input input-bordered" name="title" placeholder="My portfolio"/>
+				</label>
+				<label class="form-control">
+					<span class="label-text">URL</span>
+					<input class="input input-bordered" name="url" placeholder="https://"/>
+				</label>
+				<label class="form-control">
+					<span class="label-text">Type</span>
+					<select class="select select-bordered" name="type">
+						<option value="standard">standard</option>
+						<option value="social">social</option>
+						<option value="product">product</option>
+					</select>
+				</label>
+				<div class="flex gap-2">
+					<button type="submit" class="btn btn-primary flex-1">Save link</button>
+					<button type="reset" class="btn btn-ghost flex-1">Cancel</button>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+templ linkItem(link *domain.Link) {
+	<div id={ fmt.Sprintf("link-%s", link.ID) } class="card border border-base-300 bg-base-100 shadow-sm">
+		<div class="card-body gap-2">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<div>
+					<p class="text-lg font-semibold">{ link.Title }</p>
+					<p class="text-sm text-base-content/70">{ link.URL }</p>
+				</div>
+				<div class="flex items-center gap-2">
+					<span class="badge badge-outline badge-sm">{ string(link.Type) }</span>
+					<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
+						<button type="submit" class="btn btn-ghost btn-sm text-error">Delete</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ themeTab(user *domain.User) {
+	<div class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+		<div class="space-y-4">
+			<form method="post" action="/dashboard/theme" class="space-y-4">
+				<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
+					<p class="text-sm font-semibold">Theme presets</p>
+					<p class="text-sm text-base-content/70">Select a layout and primary color. Turbo streams can push updates live.</p>
+					<div class="mt-4 grid gap-3 sm:grid-cols-3">
+						for _, preset := range []string{"stacked", "grid", "carousel"} {
+							<label class="btn btn-outline btn-sm cursor-pointer">
+								<input type="radio" name="layout" value={ preset } class="hidden" checked?={ user.Theme.LayoutStyle == preset }/>
+								<span class="capitalize">{ preset }</span>
+							</label>
 						}
 					</div>
 				</div>
-				<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
-					<p class="text-sm font-semibold">Add a link</p>
-					<form class="space-y-3">
-						<label class="form-control">
-							<span class="label-text">Title</span>
-							<input class="input input-bordered" name="title" placeholder="My portfolio"/>
+				<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-3">
+					<p class="text-sm font-semibold">Primary color</p>
+					<div class="flex flex-wrap gap-3">
+						for _, color := range []string{"#6366F1", "#22C55E", "#F97316", "#06B6D4"} {
+							<label class="cursor-pointer">
+								<input type="radio" name="primary_color" value={ color } class="hidden" checked?={ user.Theme.PrimaryColor == color }/>
+								<span class="btn btn-sm w-10 h-10" style={ fmt.Sprintf("background:%s", color) }></span>
+							</label>
+						}
+					</div>
+					<label class="form-control">
+						<span class="label-text">Custom font</span>
+						<input class="input input-bordered" name="font" value={ user.Theme.TitleFontStyle } placeholder="Inter, Sans"/>
+					</label>
+					<div class="form-control">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input type="checkbox" name="fade_in_animation" class="checkbox" checked?={ user.Theme.FadeInAnimationEnabled }/>
+							<span class="label-text">Enable fade-in animation</span>
 						</label>
-						<label class="form-control">
-							<span class="label-text">URL</span>
-							<input class="input input-bordered" name="url" placeholder="https://"/>
+						<label class="label cursor-pointer justify-start gap-3">
+							<input type="checkbox" name="logo_animation" class="checkbox" checked?={ user.Theme.LogoAnimationEnabled }/>
+							<span class="label-text">Animate logo</span>
 						</label>
-						<label class="form-control">
-							<span class="label-text">Type</span>
-							<select class="select select-bordered" name="type">
-								<option>standard</option>
-								<option>social</option>
-								<option>product</option>
-							</select>
-						</label>
-						<div class="flex gap-2">
-							<button type="button" class="btn btn-primary flex-1">Save link</button>
-							<button type="button" class="btn btn-ghost flex-1">Cancel</button>
-						</div>
-					</form>
+					</div>
+					<div class="flex justify-end">
+						<button type="submit" class="btn btn-primary">Save theme</button>
 					</div>
 				</div>
-			} else if tab == "theme" {
-				<div class="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-					<div class="space-y-4">
-						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
-							<p class="text-sm font-semibold">Theme presets</p>
-							<p class="text-sm text-base-content/70">Select a layout and primary color. Turbo streams can push updates live.</p>
-							<div class="mt-4 grid gap-3 sm:grid-cols-3">
-								for _, preset := range []string{"Stacked", "Grid", "Carousel"} {
-									<button type="button" class="btn btn-outline btn-sm">{ preset }</button>
-								}
-							</div>
-						</div>
-						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-3">
-							<p class="text-sm font-semibold">Primary color</p>
-							<div class="flex flex-wrap gap-3">
-								for _, color := range []string{"#6366F1", "#22C55E", "#F97316", "#06B6D4"} {
-									<button type="button" class="btn btn-sm" style={ fmt.Sprintf("background:%s", color) }></button>
-								}
-							</div>
-						<label class="form-control">
-							<span class="label-text">Custom font</span>
-							<input class="input input-bordered" placeholder="Inter, Sans" value={ user.Theme.TitleFontStyle }/>
-						</label>
-						<div class="form-control">
-							<label class="label cursor-pointer justify-start gap-3">
-								<input type="checkbox" class="checkbox" checked={ user.Theme.FadeInAnimationEnabled }/>
-								<span class="label-text">Enable fade-in animation</span>
-							</label>
-							<label class="label cursor-pointer justify-start gap-3">
-								<input type="checkbox" class="checkbox" checked={ user.Theme.LogoAnimationEnabled }/>
-								<span class="label-text">Animate logo</span>
-							</label>
-						</div>
-					</div>
-				</div>
-						<div class="rounded-2xl border border-base-300 bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10 p-5">
-							<p class="text-sm font-semibold">Live preview</p>
-							<p class="text-sm text-base-content/70">Hotwire swaps this preview via Turbo Frames.</p>
-							<div class="mt-4 rounded-2xl border border-base-300 bg-base-100 p-4">
-								<p class="text-lg font-semibold">{ user.Title }</p>
-								<p class="text-sm text-base-content/70">{"@"}{ user.Handle }</p>
-						<div class="mt-3 space-y-2">
-							<div class="skeleton h-4 w-full"></div>
-							<div class="skeleton h-4 w-4/5"></div>
-							<div class="skeleton h-4 w-3/5"></div>
-						</div>
-					</div>
+			</form>
+		</div>
+		<div class="rounded-2xl border border-base-300 bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10 p-5">
+			<p class="text-sm font-semibold">Live preview</p>
+			<p class="text-sm text-base-content/70">Hotwire swaps this preview via Turbo Frames.</p>
+			<div id="theme-preview" class="mt-4 rounded-2xl border border-base-300 bg-base-100 p-4">
+				<p class="text-lg font-semibold">{ user.Title }</p>
+				<p class="text-sm text-base-content/70">{"@"}{ user.Handle }</p>
+				<div class="mt-3 text-sm text-base-content/60">
+					<p>Layout: { user.Theme.LayoutStyle }</p>
+					<p>Color: { user.Theme.PrimaryColor }</p>
 				</div>
 			</div>
-		} else if tab == "analytics" {
-			<div class="grid gap-4 md:grid-cols-2">
-				<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
-					<p class="text-sm font-semibold">Traffic overview</p>
-					<div class="stats stats-vertical shadow lg:stats-horizontal">
-						<div class="stat">
-							<div class="stat-title">Views</div>
-							<div class="stat-value">24.5k</div>
-							<div class="stat-desc">↗︎ 14% vs last week</div>
-						</div>
-						<div class="stat">
-							<div class="stat-title">Clicks</div>
-							<div class="stat-value">9.3k</div>
-							<div class="stat-desc">↗︎ 6% vs last week</div>
-						</div>
-						<div class="stat">
-							<div class="stat-title">CTR</div>
-							<div class="stat-value">38%</div>
-							<div class="stat-desc">Turbo streams keep this fresh</div>
-						</div>
-					</div>
+		</div>
+	</div>
+}
+
+templ analyticsTab(user *domain.User, summary *domain.AnalyticsSummary) {
+	<div class="grid gap-4 md:grid-cols-2">
+		<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
+			<p class="text-sm font-semibold">Traffic overview</p>
+			<div class="stats stats-vertical shadow lg:stats-horizontal">
+				<div class="stat">
+					<div class="stat-title">Views</div>
+					<div class="stat-value">{ formatCount(summary.TotalViews) }</div>
+					<div class="stat-desc">Total page views</div>
 				</div>
-				<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
-					<p class="text-sm font-semibold">Recent sessions</p>
-					<div class="overflow-x-auto">
-						<table class="table table-sm">
-							<thead>
-								<tr><th>Country</th><th>Device</th><th>Path</th></tr>
-							</thead>
-							<tbody>
-								<tr><td>US</td><td>Desktop</td><td>/u/{ user.Handle }</td></tr>
-								<tr><td>DE</td><td>Mobile</td><td>/u/{ user.Handle }/go/product</td></tr>
-								<tr><td>BR</td><td>Desktop</td><td>/dashboard</td></tr>
-							</tbody>
-						</table>
-					</div>
-					<p class="text-xs text-base-content/60">Server middleware logs target user IDs for analytics.</p>
+				<div class="stat">
+					<div class="stat-title">Clicks</div>
+					<div class="stat-value">{ formatCount(summary.TotalClicks) }</div>
+					<div class="stat-desc">Total link clicks</div>
+				</div>
+				<div class="stat">
+					<div class="stat-title">CTR</div>
+					<div class="stat-value">{ calculateCTR(summary) }%</div>
+					<div class="stat-desc">Click-through rate</div>
 				</div>
 			</div>
-		} else {
-			<div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-				<div class="space-y-4 rounded-2xl border border-base-300 bg-base-200/60 p-5">
-					<p class="text-sm font-semibold">Profile basics</p>
-					<form class="grid gap-3 md:grid-cols-2">
-						<label class="form-control">
-							<span class="label-text">Title</span>
-							<input class="input input-bordered" name="title" value={ user.Title } placeholder="Creator, Founder, Developer"/>
-						</label>
-						<label class="form-control">
-							<span class="label-text">Handle</span>
-							<input class="input input-bordered" name="handle" value={ user.Handle } placeholder="handle"/>
-						</label>
-						<label class="form-control md:col-span-2">
-							<span class="label-text">Description</span>
-							<textarea class="textarea textarea-bordered" name="description" rows="3">{ user.Description }</textarea>
-						</label>
-						<label class="form-control md:col-span-2">
-							<span class="label-text">Avatar URL</span>
-							<input class="input input-bordered" name="avatar" value={ user.AvatarURL } placeholder="https://"/>
-						</label>
-						<div class="md:col-span-2 flex justify-end gap-2">
-							<button type="button" class="btn btn-ghost">Discard</button>
-							<button type="button" class="btn btn-primary">Save profile</button>
-						</div>
-					</form>
-				</div>
-				<div class="space-y-4">
-					<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
-						<p class="text-sm font-semibold">SEO</p>
-						<form class="space-y-3">
-							<label class="form-control">
-								<span class="label-text">Meta title</span>
-								<input class="input input-bordered" name="seo_title" value={ user.SEOMeta.Title } placeholder="Profile title"/>
-							</label>
-							<label class="form-control">
-								<span class="label-text">Meta description</span>
-								<textarea class="textarea textarea-bordered" name="seo_description" rows="2">{ user.SEOMeta.Description }</textarea>
-							</label>
-							<label class="form-control">
-								<span class="label-text">OG Image URL</span>
-								<input class="input input-bordered" name="seo_image" value={ user.SEOMeta.ImageURL } placeholder="https://cdn..."/>
-							</label>
-							<div class="flex justify-end">
-								<button type="button" class="btn btn-primary btn-sm">Save SEO</button>
-							</div>
-						</form>
-					</div>
-					<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5">
-						<p class="text-sm font-semibold">Session</p>
-						<p class="text-sm text-base-content/70">Turbo-aware redirects keep you in the dashboard after OAuth.</p>
-					</div>
-				</div>
+		</div>
+		<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4">
+			<p class="text-sm font-semibold">Traffic by country</p>
+			<div class="overflow-x-auto">
+				<table class="table table-sm">
+					<thead>
+						<tr><th>Country</th><th>Count</th></tr>
+					</thead>
+					<tbody>
+						if len(summary.ByCountry) == 0 {
+							<tr><td colspan="2" class="text-center text-base-content/60">No data yet</td></tr>
+						} else {
+							for country, count := range summary.ByCountry {
+								<tr><td>{ country }</td><td>{ formatCount(count) }</td></tr>
+							}
+						}
+					</tbody>
+				</table>
 			</div>
-		}
+		</div>
+		<div class="rounded-2xl border border-base-300 bg-base-200/60 p-5 space-y-4 md:col-span-2">
+			<p class="text-sm font-semibold">Traffic by device</p>
+			<div class="flex gap-4">
+				for device, count := range summary.ByDevice {
+					<div class="rounded-xl border border-base-300 bg-base-100 p-4 flex-1">
+						<p class="text-sm text-base-content/60 capitalize">{ device }</p>
+						<p class="text-2xl font-bold">{ formatCount(count) }</p>
+					</div>
+				}
+				if len(summary.ByDevice) == 0 {
+					<div class="text-center py-4 text-base-content/60 w-full">
+						<p>No device data yet</p>
+					</div>
+				}
+			</div>
+		</div>
 	</div>
 }
 
@@ -276,4 +339,42 @@ func userDisplayName(user *domain.User) string {
 		return user.Title
 	}
 	return user.Handle
+}
+
+func profileCompleteness(user *domain.User) string {
+	score := 0
+	if user.Title != "" {
+		score += 20
+	}
+	if user.Handle != "" {
+		score += 20
+	}
+	if user.Description != "" {
+		score += 20
+	}
+	if user.AvatarURL != "" {
+		score += 20
+	}
+	if user.SEOMeta.Title != "" || user.SEOMeta.Description != "" {
+		score += 20
+	}
+	return strconv.Itoa(score)
+}
+
+func formatCount(n int64) string {
+	if n >= 1000000 {
+		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+	}
+	if n >= 1000 {
+		return fmt.Sprintf("%.1fk", float64(n)/1000)
+	}
+	return strconv.FormatInt(n, 10)
+}
+
+func calculateCTR(summary *domain.AnalyticsSummary) string {
+	if summary.TotalViews == 0 {
+		return "0"
+	}
+	ctr := float64(summary.TotalClicks) / float64(summary.TotalViews) * 100
+	return fmt.Sprintf("%.1f", ctr)
 }

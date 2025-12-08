@@ -6,20 +6,30 @@ import (
 
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/internal/ports"
+	"github.com/elchemista/driplnk/internal/service"
 	"github.com/elchemista/driplnk/views/auth"
 	"github.com/elchemista/driplnk/views/dashboard"
 	"github.com/elchemista/driplnk/views/profile"
 )
 
 type PageHandler struct {
-	users    domain.UserRepository
-	sessions ports.SessionManager
+	users        domain.UserRepository
+	sessions     ports.SessionManager
+	linkSvc      *service.LinkService
+	analyticsSvc *service.AnalyticsService
 }
 
-func NewPageHandler(users domain.UserRepository, sessions ports.SessionManager) *PageHandler {
+func NewPageHandler(
+	users domain.UserRepository,
+	sessions ports.SessionManager,
+	linkSvc *service.LinkService,
+	analyticsSvc *service.AnalyticsService,
+) *PageHandler {
 	return &PageHandler{
-		users:    users,
-		sessions: sessions,
+		users:        users,
+		sessions:     sessions,
+		linkSvc:      linkSvc,
+		analyticsSvc: analyticsSvc,
 	}
 }
 
@@ -58,10 +68,28 @@ func (h *PageHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		tab = "profile"
 	}
 
+	// Fetch user's links
+	links, err := h.linkSvc.ListLinks(r.Context(), user.ID)
+	if err != nil {
+		links = []*domain.Link{} // Empty on error
+	}
+
+	// Fetch analytics summary
+	userIDStr := string(user.ID)
+	summary, err := h.analyticsSvc.GetSummary(r.Context(), userIDStr, nil)
+	if err != nil {
+		summary = &domain.AnalyticsSummary{
+			TotalViews:  0,
+			TotalClicks: 0,
+			ByCountry:   make(map[string]int64),
+			ByDevice:    make(map[string]int64),
+		}
+	}
+
 	ctx := context.WithValue(r.Context(), domain.CtxKeyUser, user)
 	*r = *r.WithContext(ctx)
 
-	if err := RenderComponent(ctx, w, r, dashboard.Page(user, tab), dashboard.Frame(user, tab)); err != nil {
+	if err := RenderComponent(ctx, w, r, dashboard.Page(user, tab, links, summary), dashboard.Frame(user, tab, links, summary)); err != nil {
 		http.Error(w, "failed to render dashboard", http.StatusInternalServerError)
 	}
 }
@@ -85,10 +113,16 @@ func (h *PageHandler) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch user's links for profile display
+	links, err := h.linkSvc.ListLinks(r.Context(), user.ID)
+	if err != nil {
+		links = []*domain.Link{}
+	}
+
 	ctx := context.WithValue(r.Context(), domain.CtxKeyTargetUserID, string(user.ID))
 	*r = *r.WithContext(ctx)
 
-	if err := RenderComponent(ctx, w, r, profile.Page(user), profile.Frame(user)); err != nil {
+	if err := RenderComponent(ctx, w, r, profile.Page(user, links), profile.Frame(user, links)); err != nil {
 		http.Error(w, "failed to render profile", http.StatusInternalServerError)
 	}
 }

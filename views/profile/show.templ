@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -8,18 +9,18 @@ import (
 	"github.com/elchemista/driplnk/views/layout"
 )
 
-templ Page(user *domain.User) {
+templ Page(user *domain.User, links []*domain.Link) {
 	@layout.Base("Profile") {
-		@content(user)
+		@content(user, links)
 	}
 }
 
 // Frame variant for Turbo Frame requests (avoids duplicating the layout shell).
-templ Frame(user *domain.User) {
-	@content(user)
+templ Frame(user *domain.User, links []*domain.Link) {
+	@content(user, links)
 }
 
-templ content(user *domain.User) {
+templ content(user *domain.User, links []*domain.Link) {
 	<section class="py-12">
 		<div class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
 			<div class="space-y-6 rounded-3xl border border-base-300 bg-base-100/70 p-8 shadow-xl backdrop-blur">
@@ -50,23 +51,20 @@ templ content(user *domain.User) {
 				<turbo-frame id="profile-links" class="block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-lg">
 					<div class="flex items-center justify-between">
 						<h2 class="text-xl font-semibold">Featured links</h2>
-						<span class="badge badge-primary badge-outline">Turbo-ready</span>
+						<span class="badge badge-primary badge-outline">{ strconv.Itoa(len(links)) } links</span>
 					</div>
 					<div class="mt-4 grid gap-3">
-						<div class="card bg-base-200/60 border border-base-300">
-							<div class="card-body gap-2">
-								<p class="text-sm uppercase tracking-wide text-primary/80">Primary Link</p>
-								<p class="text-lg font-semibold">Your main destination</p>
-								<p class="text-sm text-base-content/70">Hotwire swaps this block without reloading the page when you reorder links.</p>
+						if len(links) == 0 {
+							<div class="text-center py-8 text-base-content/60">
+								<p>No links added yet</p>
 							</div>
-						</div>
-						<div class="card bg-base-200/40 border border-base-300">
-							<div class="card-body gap-2">
-								<p class="text-sm uppercase tracking-wide text-secondary/80">Social</p>
-								<p class="text-lg font-semibold">Social spotlight</p>
-								<p class="text-sm text-base-content/70">Add socials and products; Driplnk will render them with your theme.</p>
-							</div>
-						</div>
+						} else {
+							for _, link := range links {
+								if link.IsActive {
+									@profileLinkCard(link)
+								}
+							}
+						}
 					</div>
 				</turbo-frame>
 
@@ -86,6 +84,22 @@ templ content(user *domain.User) {
 			</div>
 		</div>
 	</section>
+}
+
+templ profileLinkCard(link *domain.Link) {
+	<a href={ templ.SafeURL(fmt.Sprintf("/go/%s", link.ID)) } class="card bg-base-200/60 border border-base-300 hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer">
+		<div class="card-body gap-2">
+			<div class="flex items-center justify-between">
+				<div>
+					<p class="text-sm uppercase tracking-wide text-primary/80">{ string(link.Type) }</p>
+					<p class="text-lg font-semibold">{ link.Title }</p>
+				</div>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/60" viewBox="0 0 20 20" fill="currentColor">
+					<path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+				</svg>
+			</div>
+		</div>
+	</a>
 }
 
 func avatarInitial(user *domain.User) string {
