@@ -80,6 +80,12 @@ Located in `./config/` by default.
     *   `font_family`: Font stack.
     *   `layout`: Layout type (e.g., "stack", "grid").
 
+### Run tests
+
+```bash
+go test -v ./...
+```
+
 ## Adapters & Architecture
 
 Driplnk follows a **Hexagonal Architecture (Ports & Adapters)**.
@@ -110,3 +116,4 @@ Driplnk follows a **Hexagonal Architecture (Ports & Adapters)**.
 *   **Handlers**: RESTful/HTMX-ready handlers for Auth, Links, and Media.
 *   **Assets**: Serves static files from `/assets/`.
 *   **SEO**: Generates `robots.txt` and `sitemap.xml` dynamically.
+

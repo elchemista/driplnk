@@ -12,7 +12,7 @@
 *.test
 
 # Instruction.md
-/error_html/
+# /error_html/
 /assets/node_modules/
 /assets/dist/
 /data/

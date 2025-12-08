@@ -188,15 +188,20 @@ func main() {
 	// Home Page (with analytics tracking)
 	mux.HandleFunc("/", analyticsMiddleware.TrackView(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
-			http.NotFound(w, r)
+			adapters_http.RespondNotFound(w, r, "Page")
 			return
 		}
 		home.Index().Render(r.Context(), w)
 	}))
 
+	// Wrap mux with middleware chain
+	var handler http.Handler = mux
+	handler = adapters_http.RecoveryMiddleware(handler)
+	handler = adapters_http.RequestIDMiddleware(handler)
+
 	server := &http.Server{
 		Addr:    ":" + serverCfg.Port,
-		Handler: mux,
+		Handler: handler,
 	}
 
 	// 9. Graceful Shutdown
