@@ -56,7 +56,7 @@ func Page(user *domain.User, links []*domain.Link) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base("Profile").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base("Profile", user.Theme.Mode).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

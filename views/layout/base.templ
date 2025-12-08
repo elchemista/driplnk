@@ -1,8 +1,15 @@
 package layout
 
-templ Base(title string) {
+templ Base(title string, theme string) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="dark">
+	<html lang="en" 
+		if theme == "system" {
+			data-theme=""
+			data-theme-preference="system"
+		} else {
+			data-theme={ theme }
+		}
+	>
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>

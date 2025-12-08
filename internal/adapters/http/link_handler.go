@@ -151,7 +151,14 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	// Respond with Turbo Stream or redirect
 	if IsTurboRequest(r) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
-		fmt.Fprintf(w, `<turbo-stream action="append" target="links-list">
+		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
+  <template>
+    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
+      <span>Link created successfully!</span>
+    </div>
+  </template>
+</turbo-stream>
+<turbo-stream action="append" target="links-list">
   <template>
     <div id="link-%s" class="card border border-base-300 bg-base-100 shadow-sm">
       <div class="card-body gap-2">
@@ -161,8 +168,8 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
             <p class="text-sm text-base-content/70">%s</p>
           </div>
           <div class="flex items-center gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" data-action="click->link#edit" data-link-id="%s">Edit</button>
-            <form method="post" action="/dashboard/links/%s/delete" data-turbo-confirm="Are you sure?">
+            <span class="badge badge-outline badge-sm">%s</span>
+            <form method="post" action="/dashboard/links/%s/delete" data-turbo-confirm="Are you sure you want to delete this link?">
               <button type="submit" class="btn btn-ghost btn-sm text-error">Delete</button>
             </form>
           </div>
@@ -171,32 +178,42 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
     </div>
   </template>
 </turbo-stream>
-<turbo-stream action="update" target="add-link-form">
+<turbo-stream action="replace" target="add-link-form">
   <template>
-    <form id="add-link-form" class="space-y-3" method="post" action="/dashboard/links">
-      <label class="form-control">
-        <span class="label-text">Title</span>
-        <input class="input input-bordered" name="title" placeholder="My portfolio"/>
-      </label>
-      <label class="form-control">
-        <span class="label-text">URL</span>
-        <input class="input input-bordered" name="url" placeholder="https://"/>
-      </label>
-      <label class="form-control">
-        <span class="label-text">Type</span>
-        <select class="select select-bordered" name="type">
-          <option value="standard">standard</option>
-          <option value="social">social</option>
-          <option value="product">product</option>
-        </select>
-      </label>
-      <div class="flex gap-2">
-        <button type="submit" class="btn btn-primary flex-1">Save link</button>
-        <button type="reset" class="btn btn-ghost flex-1">Cancel</button>
+    <form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
+      <div class="space-y-4">
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Title <span class="text-error">*</span></span>
+          </label>
+          <input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
+        </div>
+
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Type</span>
+          </label>
+          <select class="select select-bordered w-full" name="type">
+            <option value="standard">Standard</option>
+            <option value="social">Social</option>
+            <option value="product">Product</option>
+          </select>
+        </div>
+
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">URL <span class="text-error">*</span></span>
+          </label>
+          <input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
+        </div>
+      </div>
+      <div class="flex gap-2 justify-end pt-2">
+        <button type="reset" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save link</button>
       </div>
     </form>
   </template>
-</turbo-stream>`, link.ID, link.Title, link.URL, link.ID, link.ID)
+</turbo-stream>`, link.ID, link.Title, link.URL, string(link.Type), link.ID)
 		return
 	}
 
@@ -359,7 +376,7 @@ func respondError(w http.ResponseWriter, r *http.Request, message string, status
 		w.WriteHeader(status)
 		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
   <template>
-    <div class="alert alert-error shadow-lg mb-4">
+    <div class="alert alert-error shadow-lg mb-4" data-controller="flash">
       <span>%s</span>
     </div>
   </template>

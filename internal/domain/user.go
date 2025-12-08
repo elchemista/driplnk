@@ -25,6 +25,7 @@ type Theme struct {
 	ButtonAnimationType    string `json:"button_animation_type,omitempty"`
 	FadeInAnimationEnabled bool   `json:"fade_in_animation_enabled,omitempty"`
 	LogoAnimationEnabled   bool   `json:"logo_animation_enabled,omitempty"`
+	Mode                   string `json:"mode,omitempty"` // "system", "light", "dark"
 }
 
 type User struct {

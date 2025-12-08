@@ -7,6 +7,11 @@ export default class extends Controller {
   }
 
   connect() {
+    console.log("[TabsController] Controller connected", {
+      frameId: this.frameIdValue,
+      active: this.activeValue
+    })
+
     if (!this.hasFrameIdValue) {
       this.frameIdValue = this.element.id || "dashboard-content"
     }
@@ -19,6 +24,12 @@ export default class extends Controller {
   visit(event) {
     const url = event.currentTarget.getAttribute("href")
     const tab = event.params.tab || ""
+
+    console.log(`🔗 [TabsController] Tab clicked:`, {
+      tab,
+      url,
+      frameId: this.frameIdValue
+    })
 
     if (tab) {
       this.activeValue = tab

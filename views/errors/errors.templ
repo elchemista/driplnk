@@ -14,7 +14,7 @@ type ErrorData struct {
 }
 
 templ ErrorPage(data ErrorData) {
-	@layout.Base(data.Title) {
+	@layout.Base(data.Title, "system") {
 		<main class="grid h-screen min-h-full place-items-center bg-base-100 px-6 py-24 sm:py-32 lg:px-8">
 			<div class="text-center">
 				<p class="text-base font-semibold text-primary">{ intToString(data.Code) }</p>

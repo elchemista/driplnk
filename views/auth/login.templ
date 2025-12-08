@@ -3,7 +3,7 @@ package auth
 import "github.com/elchemista/driplnk/views/layout"
 
 templ Login() {
-	@layout.Base("Login") {
+	@layout.Base("Login", "system") {
 		<section class="min-h-screen flex items-center justify-center py-12">
 			<div class="grid w-full max-w-5xl gap-8 md:grid-cols-[1.1fr_0.9fr]">
 				<div class="rounded-3xl border border-base-300 bg-base-100/60 p-8 shadow-xl backdrop-blur">

@@ -1,20 +1,18 @@
-.PHONY: dev build run test clean setup
+.PHONY: dev build run test clean setup generate
 
-# Development (sources .env automatically)
-dev:
-	@bash -c 'set -a; [ -f .env ] && source .env; set +a; make -j3 dev-go dev-js dev-css'
+# Development - builds assets first, then runs watchers in parallel
+# Development - builds assets first, then runs watchers in parallel
+dev: build-assets
+	@bash -c 'set -a; [ -f .env ] && source .env; set +a; make -j2 dev-go dev-assets'
 
 dev-go:
 	@bash -c 'set -a; [ -f .env ] && source .env; set +a; air'
 
-dev-js:
-	cd assets && npm run watch:js
-
-dev-css:
-	cd assets && npm run watch:css
+dev-assets:
+	cd assets && npm run watch
 
 # Build
-build: build-assets build-go
+build: generate build-assets build-go
 
 build-assets:
 	cd assets && npm run build
@@ -32,3 +30,12 @@ setup:
 # Templ generation
 generate:
 	templ generate
+
+# Test
+test:
+	go test -v ./...
+
+# Clean
+clean:
+	rm -rf tmp/
+	rm -rf assets/dist/

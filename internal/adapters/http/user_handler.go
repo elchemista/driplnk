@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -51,28 +52,26 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update fields if provided
-	if title := strings.TrimSpace(r.FormValue("title")); title != "" {
-		user.Title = title
-	}
-	if handle := strings.TrimSpace(r.FormValue("handle")); handle != "" {
-		// Check uniqueness if handle changed
-		if handle != user.Handle {
-			existing, _ := h.users.GetByHandle(r.Context(), handle)
-			if existing != nil && existing.ID != user.ID {
-				respondError(w, r, "Handle already taken", http.StatusConflict)
-				return
-			}
-			user.Handle = handle
+	// Extract and sanitize form values
+	title := strings.TrimSpace(r.FormValue("title"))
+	handle := slugifyHandle(r.FormValue("handle")) // Apply slugify here
+	description := r.FormValue("description")
+	avatarURL := strings.TrimSpace(r.FormValue("avatar"))
+
+	// Check uniqueness if handle changed and is not empty
+	if handle != "" && handle != user.Handle {
+		existing, _ := h.users.GetByHandle(r.Context(), handle)
+		if existing != nil && existing.ID != user.ID {
+			respondError(w, r, "Handle already taken", http.StatusConflict)
+			return
 		}
 	}
-	if desc := r.FormValue("description"); desc != "" {
-		user.Description = desc
-	}
-	if avatar := strings.TrimSpace(r.FormValue("avatar")); avatar != "" {
-		user.AvatarURL = avatar
-	}
 
+	// Update user fields
+	user.Title = title
+	user.Handle = handle
+	user.Description = description
+	user.AvatarURL = avatarURL
 	user.UpdatedAt = time.Now()
 
 	if err := h.users.Save(r.Context(), user); err != nil {
@@ -84,9 +83,12 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	if IsTurboRequest(r) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
+		// 1. Flash message
+		// 2. We can also reload the frame by redirecting via Turbo script?
+		// Or just append the flash and let the client-side value persist (it's already correct due to js).
 		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
   <template>
-    <div class="alert alert-success shadow-lg mb-4">
+    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
       <span>Profile updated successfully!</span>
     </div>
   </template>
@@ -95,6 +97,19 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	TurboAwareRedirect(w, r, "/dashboard?tab=profile")
+}
+
+func slugifyHandle(s string) string {
+	// Slugify: preserve case, remove spaces, remove non-alphanumeric (except - and _)
+	s = strings.TrimSpace(s)
+	// Remove spaces completely
+	s = strings.ReplaceAll(s, " ", "")
+	// Remove invalid chars (keep only a-zA-Z0-9-_)
+	reg, err := regexp.Compile("[^a-zA-Z0-9-_]+")
+	if err != nil {
+		return s
+	}
+	return reg.ReplaceAllString(s, "")
 }
 
 // UpdateSEO handles POST /dashboard/seo
@@ -115,14 +130,15 @@ func (h *UserHandler) UpdateSEO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if title := strings.TrimSpace(r.FormValue("seo_title")); title != "" {
-		user.SEOMeta.Title = title
+	// Update SEO fields - allow empty values to clear
+	if r.Form.Has("seo_title") {
+		user.SEOMeta.Title = strings.TrimSpace(r.FormValue("seo_title"))
 	}
-	if desc := r.FormValue("seo_description"); desc != "" {
-		user.SEOMeta.Description = desc
+	if r.Form.Has("seo_description") {
+		user.SEOMeta.Description = r.FormValue("seo_description")
 	}
-	if image := strings.TrimSpace(r.FormValue("seo_image")); image != "" {
-		user.SEOMeta.ImageURL = image
+	if r.Form.Has("seo_image") {
+		user.SEOMeta.ImageURL = strings.TrimSpace(r.FormValue("seo_image"))
 	}
 
 	user.UpdatedAt = time.Now()
@@ -137,7 +153,7 @@ func (h *UserHandler) UpdateSEO(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
 		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
   <template>
-    <div class="alert alert-success shadow-lg mb-4">
+    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
       <span>SEO settings updated!</span>
     </div>
   </template>
@@ -189,6 +205,11 @@ func (h *UserHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 		user.Theme.BackgroundValue = bgValue
 	}
 
+	// Parse mode
+	if mode := r.FormValue("mode"); mode != "" {
+		user.Theme.Mode = mode
+	}
+
 	// Parse animations (checkboxes - present = checked)
 	user.Theme.FadeInAnimationEnabled = r.FormValue("fade_in_animation") == "on" || r.FormValue("fade_in_animation") == "true"
 	user.Theme.LogoAnimationEnabled = r.FormValue("logo_animation") == "on" || r.FormValue("logo_animation") == "true"
@@ -205,7 +226,7 @@ func (h *UserHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
 		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
   <template>
-    <div class="alert alert-success shadow-lg mb-4">
+    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
       <span>Theme updated!</span>
     </div>
   </template>

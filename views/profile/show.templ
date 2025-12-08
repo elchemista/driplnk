@@ -10,7 +10,7 @@ import (
 )
 
 templ Page(user *domain.User, links []*domain.Link) {
-	@layout.Base("Profile") {
+	@layout.Base("Profile", user.Theme.Mode) {
 		@content(user, links)
 	}
 }
