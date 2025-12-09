@@ -25,6 +25,9 @@ func (m *MockUserRepo) GetByEmail(ctx context.Context, email string) (*domain.Us
 func (m *MockUserRepo) GetByHandle(ctx context.Context, handle string) (*domain.User, error) {
 	return nil, nil
 }
+func (m *MockUserRepo) ListAll(ctx context.Context) ([]*domain.User, error) {
+	return nil, nil
+}
 
 // Mock SessionManager
 type MockSessionManager struct {

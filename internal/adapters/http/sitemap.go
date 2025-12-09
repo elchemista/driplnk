@@ -1,9 +1,13 @@
 package http
 
 import (
+	"context"
 	"encoding/xml"
+	"log"
 	"net/http"
 	"time"
+
+	"github.com/elchemista/driplnk/internal/domain"
 )
 
 type URL struct {
@@ -14,18 +18,19 @@ type URL struct {
 }
 
 type UrlSet struct {
-	XMLName string `xml:"http://www.sitemaps.org/schemas/sitemap/0.9 urlset"`
-	URLs    []URL  `xml:"url"`
+	XMLName xml.Name `xml:"http://www.sitemaps.org/schemas/sitemap/0.9 urlset"`
+	URLs    []URL    `xml:"url"`
 }
 
 type SitemapHandler struct {
-	BaseURL string
-	// In the future, we can inject a service to fetch dynamic routes (e.g. user profiles)
+	BaseURL  string
+	UserRepo domain.UserRepository
 }
 
-func NewSitemapHandler(baseURL string) *SitemapHandler {
+func NewSitemapHandler(baseURL string, userRepo domain.UserRepository) *SitemapHandler {
 	return &SitemapHandler{
-		BaseURL: baseURL,
+		BaseURL:  baseURL,
+		UserRepo: userRepo,
 	}
 }
 
@@ -43,13 +48,26 @@ func (h *SitemapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ChangeFreq: "monthly",
 			Priority:   "0.8",
 		},
-		// Add more static pages here
 	}
 
-	// 2. Dynamic Routes (TODO: Fetch from DB)
-	// for _, user := range users {
-	// 	urls = append(urls, URL{Loc: h.BaseURL + "/" + user.Handle ...})
-	// }
+	// 2. Dynamic Routes - Fetch all users from repository
+	if h.UserRepo != nil {
+		users, err := h.UserRepo.ListAll(context.Background())
+		if err != nil {
+			log.Printf("[WARN] Failed to list users for sitemap: %v", err)
+		} else {
+			for _, user := range users {
+				if user.Handle != "" {
+					urls = append(urls, URL{
+						Loc:        h.BaseURL + "/" + user.Handle,
+						LastMod:    user.UpdatedAt.Format("2006-01-02"),
+						ChangeFreq: "weekly",
+						Priority:   "0.6",
+					})
+				}
+			}
+		}
+	}
 
 	// 3. Render XML
 	w.Header().Set("Content-Type", "application/xml")

@@ -121,12 +121,10 @@ The project follows **Hexagonal Architecture (Ports and Adapters)** to decouple 
     *   Public profile page templated with theme preview.
 
 ### Pending
-*   [ ] Link CRUD Handlers + Turbo streams for reordering.
-*   [ ] Persist profile/theme updates and wire forms to services.
-*   [ ] HTMX integration (if still desired alongside Turbo).
+*   [ ] Test Suite: `LinkHandler`, `UserHandler`, `PageHandler`.
 
 ## Current Work Plan
 
-1. Finish link CRUD endpoints and stream updates into dashboard frames.
-2. Persist profile/theme forms (repo/service wiring) and add validation.
-3. Decide on HTMX usage vs. pure Hotwire; document the choice and adjust assets accordingly.
+1.  **Frontend**: Implement visitor tracking (Completed).
+2.  **Tests**: Implement comprehensive test suite for handlers.
+3.  **Documentation**: Finalize project documentation.

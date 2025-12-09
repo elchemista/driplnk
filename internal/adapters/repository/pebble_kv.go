@@ -117,6 +117,38 @@ func (r *PebbleRepository) GetByHandle(ctx context.Context, handle string) (*dom
 	return r.GetByID(ctx, userID)
 }
 
+func (r *PebbleRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
+	// Scan all keys with "user:" prefix (but not "user:email:" or "user:handle:")
+	prefix := []byte("user:")
+	iter, _ := r.db.NewIter(&pebble.IterOptions{
+		LowerBound: prefix,
+	})
+	defer iter.Close()
+
+	var users []*domain.User
+
+	for iter.SeekGE(prefix); iter.Valid(); iter.Next() {
+		key := string(iter.Key())
+		// Skip index keys (email and handle)
+		if len(key) > 10 && (key[5:10] == "email" || key[5:11] == "handle") {
+			continue
+		}
+		// Skip if not a direct user key (user:<id>)
+		parts := splitKey(key)
+		if len(parts) != 2 || parts[0] != "user" {
+			continue
+		}
+
+		var user domain.User
+		if err := json.Unmarshal(iter.Value(), &user); err != nil {
+			continue // Skip malformed entries
+		}
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
 // --- Link Repository ---
 
 func (r *PebbleRepository) SaveLink(ctx context.Context, link *domain.Link) error {

@@ -3,10 +3,13 @@ import { Application } from "@hotwired/stimulus"
 import TabsController from "./controllers/tabs_controller"
 import FlashController from "./controllers/flash_controller"
 import FormAutosaveController from "./controllers/form_autosave_controller"
-import "./theme.js"
+import { initAnalytics } from "./analytics.js"
 
 // Expose Turbo globally so Stimulus controllers can target frames.
 window.Turbo = Turbo
+
+// Initialize Analytics (Visitor ID)
+initAnalytics()
 
 const application = Application.start()
 application.register("tabs", TabsController)

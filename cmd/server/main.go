@@ -174,7 +174,7 @@ func main() {
 	mux.HandleFunc("/go/{id}", linkHandler.HandleRedirect)
 
 	// Sitemap Handler
-	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:" + serverCfg.Port)
+	sitemapHandler := adapters_http.NewSitemapHandler("http://localhost:"+serverCfg.Port, userRepo)
 	mux.Handle("/sitemap.xml", sitemapHandler)
 
 	// Analytics Routes
