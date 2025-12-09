@@ -69,13 +69,14 @@ templ body(user *domain.User, tab string, links []*domain.Link, summary *domain.
 			<a class={ tabClasses(tab, "analytics") } href="/dashboard?tab=analytics" data-action="click->tabs#visit" data-tabs-tab-param="analytics" data-turbo-frame="dashboard-content">Analytics</a>
 		</div>
 
-		if tab == "links" {
+		switch tab {
+		case "links":
 			@linksTab(user, links)
-		} else if tab == "theme" {
+		case "theme":
 			@themeTab(user)
-		} else if tab == "analytics" {
+		case "analytics":
 			@analyticsTab(user, summary)
-		} else {
+		default:
 			@profileTab(user)
 		}
 	</div>
