@@ -48,4 +48,5 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id UserID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByHandle(ctx context.Context, handle string) (*User, error)
+	ListAll(ctx context.Context) ([]*User, error)
 }

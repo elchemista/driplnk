@@ -20,6 +20,7 @@ type MockUserRepository struct {
 	GetByIDFunc     func(ctx context.Context, id domain.UserID) (*domain.User, error)
 	GetByEmailFunc  func(ctx context.Context, email string) (*domain.User, error)
 	GetByHandleFunc func(ctx context.Context, handle string) (*domain.User, error)
+	ListAllFunc     func(ctx context.Context) ([]*domain.User, error)
 }
 
 func NewMockUserRepository() *MockUserRepository {
@@ -82,6 +83,20 @@ func (m *MockUserRepository) GetByHandle(ctx context.Context, handle string) (*d
 		return user, nil
 	}
 	return nil, domain.ErrNotFound
+}
+
+func (m *MockUserRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
+	if m.ListAllFunc != nil {
+		return m.ListAllFunc(ctx)
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	users := make([]*domain.User, 0, len(m.users))
+	for _, user := range m.users {
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 // AddUser is a helper to seed users for tests.

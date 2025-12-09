@@ -144,6 +144,49 @@ func (r *PostgresRepository) getUserByField(ctx context.Context, field string, v
 	return &user, nil
 }
 
+func (r *PostgresRepository) ListAll(ctx context.Context) ([]*domain.User, error) {
+	query := `SELECT id, email, handle, title, description, avatar_url, seo_meta, theme, created_at, updated_at FROM users ORDER BY created_at ASC`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		var user domain.User
+		var seoMetaBytes, themeBytes []byte
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Handle,
+			&user.Title,
+			&user.Description,
+			&user.AvatarURL,
+			&seoMetaBytes,
+			&themeBytes,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if len(seoMetaBytes) > 0 {
+			if err := json.Unmarshal(seoMetaBytes, &user.SEOMeta); err != nil {
+				return nil, fmt.Errorf("unmarshal seo_meta: %w", err)
+			}
+		}
+		if len(themeBytes) > 0 {
+			if err := json.Unmarshal(themeBytes, &user.Theme); err != nil {
+				return nil, fmt.Errorf("unmarshal theme: %w", err)
+			}
+		}
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
 // --- Link Repository ---
 
 func (r *PostgresRepository) SaveLink(ctx context.Context, link *domain.Link) error {
