@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -46,7 +47,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 		}
 
 		// Verify update
-		updated, _ := userRepo.GetByID(nil, "user-123")
+		updated, _ := userRepo.GetByID(context.Background(), "user-123")
 		if updated.Title != "New Title" {
 			t.Errorf("expected title 'New Title', got '%s'", updated.Title)
 		}
@@ -140,7 +141,7 @@ func TestUserHandler_UpdateSEO(t *testing.T) {
 			t.Errorf("expected redirect or OK, got %d", rec.Code)
 		}
 
-		updated, _ := userRepo.GetByID(nil, "user-123")
+		updated, _ := userRepo.GetByID(context.Background(), "user-123")
 		if updated.SEOMeta.Title != "SEO Title" {
 			t.Errorf("expected SEO title 'SEO Title', got '%s'", updated.SEOMeta.Title)
 		}
@@ -177,7 +178,7 @@ func TestUserHandler_UpdateTheme(t *testing.T) {
 			t.Errorf("expected redirect or OK, got %d", rec.Code)
 		}
 
-		updated, _ := userRepo.GetByID(nil, "user-123")
+		updated, _ := userRepo.GetByID(context.Background(), "user-123")
 		if updated.Theme.LayoutStyle != "grid" {
 			t.Errorf("expected layout 'grid', got '%s'", updated.Theme.LayoutStyle)
 		}
@@ -193,7 +194,7 @@ func TestUserHandler_UpdateTheme(t *testing.T) {
 		// First enable
 		user.Theme.FadeInAnimationEnabled = true
 		user.Theme.LogoAnimationEnabled = true
-		userRepo.Save(nil, user)
+		userRepo.Save(context.Background(), user)
 
 		form := url.Values{}
 		form.Set("layout", "stacked")
@@ -205,7 +206,7 @@ func TestUserHandler_UpdateTheme(t *testing.T) {
 
 		handler.UpdateTheme(rec, req)
 
-		updated, _ := userRepo.GetByID(nil, "user-123")
+		updated, _ := userRepo.GetByID(context.Background(), "user-123")
 		if updated.Theme.FadeInAnimationEnabled {
 			t.Error("expected fade_in_animation to be disabled")
 		}

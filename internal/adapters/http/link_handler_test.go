@@ -19,8 +19,9 @@ func TestLinkHandler_CreateLink(t *testing.T) {
 	linkRepo := mocks.NewMockLinkRepository()
 	analyticsRepo := mocks.NewMockAnalyticsRepository()
 	sessionMgr := mocks.NewMockSessionManager()
+	metadataFetcher := mocks.NewMockMetadataFetcher()
 
-	linkSvc := service.NewLinkService(linkRepo)
+	linkSvc := service.NewLinkService(linkRepo, metadataFetcher)
 	analyticsSvc := service.NewAnalyticsService(analyticsRepo)
 	handler := adapters_http.NewLinkHandler(linkSvc, analyticsSvc, sessionMgr, userRepo)
 
@@ -113,8 +114,9 @@ func TestLinkHandler_DeleteLink(t *testing.T) {
 	linkRepo := mocks.NewMockLinkRepository()
 	analyticsRepo := mocks.NewMockAnalyticsRepository()
 	sessionMgr := mocks.NewMockSessionManager()
+	metadataFetcher := mocks.NewMockMetadataFetcher()
 
-	linkSvc := service.NewLinkService(linkRepo)
+	linkSvc := service.NewLinkService(linkRepo, metadataFetcher)
 	analyticsSvc := service.NewAnalyticsService(analyticsRepo)
 	handler := adapters_http.NewLinkHandler(linkSvc, analyticsSvc, sessionMgr, userRepo)
 
@@ -166,8 +168,9 @@ func TestLinkHandler_HandleRedirect(t *testing.T) {
 	linkRepo := mocks.NewMockLinkRepository()
 	analyticsRepo := mocks.NewMockAnalyticsRepository()
 	sessionMgr := mocks.NewMockSessionManager()
+	metadataFetcher := mocks.NewMockMetadataFetcher()
 
-	linkSvc := service.NewLinkService(linkRepo)
+	linkSvc := service.NewLinkService(linkRepo, metadataFetcher)
 	analyticsSvc := service.NewAnalyticsService(analyticsRepo)
 	handler := adapters_http.NewLinkHandler(linkSvc, analyticsSvc, sessionMgr, userRepo)
 
