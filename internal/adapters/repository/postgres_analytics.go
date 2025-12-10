@@ -70,7 +70,7 @@ func (r *PostgresRepository) GetSummary(ctx context.Context, userID string, link
 	queryCountry := fmt.Sprintf(`
 		SELECT country, COUNT(*)
 		FROM analytics_events
-		WHERE %s AND country != ''
+		WHERE %s AND country != '' AND event_type = 'view'
 		GROUP BY country
 	`, filter)
 
@@ -97,7 +97,7 @@ func (r *PostgresRepository) GetSummary(ctx context.Context, userID string, link
 	queryDevice := fmt.Sprintf(`
 		SELECT meta->>'device_type', COUNT(*)
 		FROM analytics_events
-		WHERE %s AND meta->>'device_type' IS NOT NULL
+		WHERE %s AND meta->>'device_type' IS NOT NULL AND event_type = 'view'
 		GROUP BY meta->>'device_type'
 	`, filter)
 
