@@ -10,6 +10,7 @@ import (
 
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/internal/ports"
+	"github.com/elchemista/driplnk/views/dashboard"
 )
 
 // UserHandler handles profile, SEO, and theme updates.
@@ -224,25 +225,19 @@ func (h *UserHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 
 	if IsTurboRequest(r) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
+		// 1. Flash message
 		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
   <template>
     <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
       <span>Theme updated!</span>
     </div>
   </template>
-</turbo-stream>
-<turbo-stream action="replace" target="theme-preview">
-  <template>
-    <div id="theme-preview" class="rounded-2xl border border-base-300 bg-base-100 p-4">
-      <p class="text-lg font-semibold">%s</p>
-      <p class="text-sm text-base-content/70">@%s</p>
-      <div class="mt-3 text-sm text-base-content/60">
-        <p>Layout: %s</p>
-        <p>Color: %s</p>
-      </div>
-    </div>
-  </template>
-</turbo-stream>`, user.Title, user.Handle, user.Theme.LayoutStyle, user.Theme.PrimaryColor)
+</turbo-stream>`)
+
+		// 2. Preview Update
+		if err := dashboard.ThemePreviewStream(user).Render(r.Context(), w); err != nil {
+			log.Printf("[ERR] Failed to render theme preview: %v", err)
+		}
 		return
 	}
 

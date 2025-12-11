@@ -76,7 +76,7 @@ templ content(user *domain.User, links []*domain.Link) {
 templ profileLinkCard(link *domain.Link, user *domain.User) {
 	<a href={ templ.SafeURL(fmt.Sprintf("/go/%s", link.ID)) } 
 	   data-turbo="false"
-	   class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] w-96 max-w-full mx-auto block overflow-hidden"
+	   class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] w-full mx-auto block overflow-hidden"
 	   style={ linkStyle(user) }>
 		
 		if ogImage, hasImage := link.Metadata["og:image"]; hasImage && ogImage != "" {
