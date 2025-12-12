@@ -22,7 +22,7 @@ func TestLinkHandler_CreateLink(t *testing.T) {
 	mockUserRepo := mocks.NewMockUserRepository()
 	mockMetadata := mocks.NewMockMetadataFetcher()
 
-	linkService := service.NewLinkService(mockRepo, mockMetadata)
+	linkService := service.NewLinkService(mockRepo, mockMetadata, nil)
 	analyticsService := service.NewAnalyticsService(mockAnalyticsRepo)
 	h := handler.NewLinkHandler(linkService, analyticsService, mockSessionManager, mockUserRepo)
 
@@ -70,7 +70,7 @@ func TestLinkHandler_HandleRedirect(t *testing.T) {
 	mockUserRepo := mocks.NewMockUserRepository()
 	mockMetadata := mocks.NewMockMetadataFetcher()
 
-	linkService := service.NewLinkService(mockRepo, mockMetadata)
+	linkService := service.NewLinkService(mockRepo, mockMetadata, nil)
 	analyticsService := service.NewAnalyticsService(mockAnalyticsRepo)
 	h := handler.NewLinkHandler(linkService, analyticsService, mockSessionManager, mockUserRepo)
 
@@ -114,7 +114,7 @@ func TestLinkHandler_DeleteLink(t *testing.T) {
 	mockUserRepo := mocks.NewMockUserRepository()
 	mockMetadata := mocks.NewMockMetadataFetcher()
 
-	linkService := service.NewLinkService(mockRepo, mockMetadata)
+	linkService := service.NewLinkService(mockRepo, mockMetadata, nil)
 	h := handler.NewLinkHandler(linkService, nil, mockSessionManager, mockUserRepo)
 
 	t.Run("Success", func(t *testing.T) {

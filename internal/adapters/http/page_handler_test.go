@@ -19,7 +19,7 @@ func TestPageHandler_Dashboard(t *testing.T) {
 	mockAnalyticsRepo := mocks.NewMockAnalyticsRepository()
 	mockMetadata := mocks.NewMockMetadataFetcher()
 
-	linkService := service.NewLinkService(mockRepo, mockMetadata)
+	linkService := service.NewLinkService(mockRepo, mockMetadata, nil)
 	analyticsService := service.NewAnalyticsService(mockAnalyticsRepo)
 
 	h := handler.NewPageHandler(mockUsers, mockSessions, linkService, analyticsService)
@@ -58,7 +58,7 @@ func TestPageHandler_Profile(t *testing.T) {
 	mockAnalyticsRepo := mocks.NewMockAnalyticsRepository()
 	mockMetadata := mocks.NewMockMetadataFetcher()
 
-	linkService := service.NewLinkService(mockRepo, mockMetadata)
+	linkService := service.NewLinkService(mockRepo, mockMetadata, nil)
 	analyticsService := service.NewAnalyticsService(mockAnalyticsRepo)
 
 	h := handler.NewPageHandler(mockUsers, mockSessions, linkService, analyticsService)

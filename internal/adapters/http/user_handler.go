@@ -17,12 +17,14 @@ import (
 type UserHandler struct {
 	users    domain.UserRepository
 	sessions ports.SessionManager
+	uploader ports.FileUploader
 }
 
-func NewUserHandler(users domain.UserRepository, sessions ports.SessionManager) *UserHandler {
+func NewUserHandler(users domain.UserRepository, sessions ports.SessionManager, uploader ports.FileUploader) *UserHandler {
 	return &UserHandler{
 		users:    users,
 		sessions: sessions,
+		uploader: uploader,
 	}
 }
 
@@ -48,16 +50,51 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
-		return
+	// Parse form - support both multipart (for file uploads) and regular forms
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Extract and sanitize form values
 	title := strings.TrimSpace(r.FormValue("title"))
 	handle := slugifyHandle(r.FormValue("handle")) // Apply slugify here
 	description := r.FormValue("description")
-	avatarURL := strings.TrimSpace(r.FormValue("avatar"))
+
+	// Handle Avatar Upload
+	avatarURL := user.AvatarURL // Default to existing
+	newAvatarUploaded := false
+	file, header, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+		// If a file was uploaded and uploader is configured, process it
+		if h.uploader != nil {
+			// Generate filename: userid_timestamp.ext
+			ext := ".jpg"
+			if strings.HasSuffix(strings.ToLower(header.Filename), ".png") {
+				ext = ".png"
+			}
+			filename := fmt.Sprintf("%s_%d%s", user.ID, time.Now().Unix(), ext)
+
+			uploadedURL, err := h.uploader.UploadProfileImage(r.Context(), file, filename)
+			if err != nil {
+				log.Printf("[ERR] Failed to upload avatar: %v", err)
+			} else {
+				avatarURL = uploadedURL
+				newAvatarUploaded = true
+			}
+		}
+	} else if err != http.ErrMissingFile {
+		log.Printf("[WARN] Error retrieving avatar file: %v", err)
+	}
 
 	// Check uniqueness if handle changed and is not empty
 	if handle != "" && handle != user.Handle {
@@ -73,6 +110,10 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	user.Handle = handle
 	user.Description = description
 	user.AvatarURL = avatarURL
+	// Also update SEO image if a new avatar was uploaded
+	if newAvatarUploaded {
+		user.SEOMeta.ImageURL = avatarURL
+	}
 	user.UpdatedAt = time.Now()
 
 	if err := h.users.Save(r.Context(), user); err != nil {

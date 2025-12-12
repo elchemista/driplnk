@@ -48,7 +48,7 @@ templ Page(user *domain.User, tab string, links []*domain.Link, summary *domain.
 				</div>
 			</div>
 
-			<turbo-frame id="dashboard-content" class="mt-8 block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-xl">
+			<turbo-frame id="dashboard-content" class="mt-8 block rounded-3xl border border-base-300 bg-base-100/70 p-4 sm:p-6 shadow-xl overflow-hidden">
 				@body(user, tab, links, summary)
 			</turbo-frame>
 		</section>
@@ -56,7 +56,7 @@ templ Page(user *domain.User, tab string, links []*domain.Link, summary *domain.
 }
 
 templ Frame(user *domain.User, tab string, links []*domain.Link, summary *domain.AnalyticsSummary) {
-	<turbo-frame id="dashboard-content" class="mt-8 block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-xl">
+	<turbo-frame id="dashboard-content" class="mt-8 block rounded-3xl border border-base-300 bg-base-100/70 p-4 sm:p-6 shadow-xl overflow-hidden">
 		@body(user, tab, links, summary)
 	</turbo-frame>
 }
@@ -86,277 +86,440 @@ templ body(user *domain.User, tab string, links []*domain.Link, summary *domain.
 templ profileTab(user *domain.User) {
 	<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
 		<!-- Left Column: Profile Info (4 cols) -->
-		<div class="md:col-span-4 space-y-6">
-			<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-4 rounded-box shadow-sm">
-				<legend class="fieldset-legend">Profile Information</legend>
+		<div class="md:col-span-6 space-y-6">
+			<div class="card bg-base-100 border border-base-300 shadow-sm">
+				<div class="card-body p-4">
+					<h3 class="card-title text-sm font-semibold">Profile Information</h3>
 				
-				<form method="post" action="/dashboard/profile" class="space-y-4" data-controller="form-autosave">
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Avatar URL</span>
-						</label>
-						<input class="input input-bordered w-full text-sm" name="avatar" value={ user.AvatarURL } placeholder="https://..."/>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Display Name</span>
-						</label>
-						<input class="input input-bordered w-full" name="title" value={ user.Title } placeholder="e.g. John Doe"/>
-					</div>
-					
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Handle</span>
-						</label>
-						<div class="join w-full">
-							<span class="join-item btn btn-active btn-sm no-animation cursor-default bg-base-200 border-base-300">/</span>
-							<input class="join-item input input-bordered input-sm w-full font-mono text-sm" 
-								name="handle" 
-								value={ user.Handle } 
-								placeholder="username"
-								oninput="this.value = this.value.replace(/\s+/g, '').replace(/[^a-zA-Z0-9\-_]/g, '')"
-								pattern="[a-zA-Z0-9\-_]+"
-								title="Letters, numbers, and hyphens only. No spaces."
-							/>
-						</div>
-						<div class="label">
-							<span class="label-text-alt text-base-content/50">No spaces allowed.</span>
-						</div>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Bio</span>
-						</label>
-						<textarea class="textarea textarea-bordered h-32 leading-relaxed w-full" name="description" placeholder="Tell your story...">{ user.Description }</textarea>
-					</div>
-
-					<div class="mt-4">
-						<button type="submit" class="btn btn-primary btn-sm w-full">Save Profile</button>
-					</div>
-				</form>
-			</fieldset>
-		</div>
-
-		<!-- Right Column: SEO & Advanced (8 cols) -->
-		<div class="md:col-span-8 space-y-6">
-			<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-8 rounded-box shadow-sm">
-				<legend class="fieldset-legend">Search Engine Optimization</legend>
-				
-				<div class="mb-6 flex justify-between items-center">
-					<p class="text-sm text-base-content/60">Control your preview card on Twitter, LinkedIn, and Google.</p>
-					<div class="badge badge-neutral badge-outline">SEO</div>
-				</div>
-
-				<form method="post" action="/dashboard/seo" class="grid grid-cols-1 gap-6" data-controller="form-autosave">
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text font-medium">Meta Title</span>
-						</label>
-						<input class="input input-bordered w-full" name="seo_title" value={ user.SEOMeta.Title } placeholder="Page Title (overrides profile name)"/>
-					</div>
-
-					<div class="form-control w-full flex flex-col">
-						<label class="label">
-							<span class="label-text font-medium">Meta Description</span>
-						</label>
-						<textarea class="textarea textarea-bordered h-24 w-full" name="seo_description" placeholder="A catchy description for search results...">{ user.SEOMeta.Description }</textarea>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text font-medium">Social Image URL (OG:Image)</span>
-						</label>
-						<div class="flex gap-4">
-							<div class="flex-grow">
-								<input class="input input-bordered w-full font-mono text-xs" name="seo_image" value={ user.SEOMeta.ImageURL } placeholder="https://..."/>
-							</div>
-							if user.SEOMeta.ImageURL != "" {
+					<form method="post" action="/dashboard/profile" enctype="multipart/form-data" class="space-y-4" data-controller="form-autosave">
+						<div class="form-control w-full">
+							<label class="label">
+								<span class="label-text">Avatar</span>
+							</label>
+							<div class="flex items-center gap-4">
 								<div class="avatar">
-									<div class="w-12 h-12 rounded bg-base-200">
-										<img src={ user.SEOMeta.ImageURL } alt="Preview" />
+									<div class="w-16 h-16 rounded-full bg-base-200 ring ring-primary ring-offset-base-100 ring-offset-2">
+										if user.AvatarURL != "" {
+											<img id="avatar-preview" src={ user.AvatarURL } alt="Avatar" class="rounded-full object-cover" />
+										} else {
+											<img id="avatar-preview" src="" alt="Avatar" class="rounded-full object-cover hidden" />
+											<div id="avatar-placeholder" class="flex items-center justify-center w-full h-full text-2xl font-bold text-base-content/30">
+												if len(user.Handle) > 0 {
+													{ string(user.Handle[0]) }
+												} else {
+													?
+												}
+											</div>
+										}
 									</div>
 								</div>
-							}
-						</div>
-					</div>
-
-					<div class="flex justify-end pt-4 border-t border-base-200">
-						<button type="submit" class="btn btn-primary px-8">Save SEO Settings</button>
-					</div>
-				</form>
-			</fieldset>
-		</div>
-	</div>
-}
-
-templ linksTab(user *domain.User, links []*domain.Link) {
-	<div class="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
-		<div class="space-y-6">
-			<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-4 rounded-box shadow-sm">
-				<legend class="fieldset-legend">Your links</legend>
-				<p class="text-sm text-base-content/70 mb-4">Turbo replaces this panel when you reorder or edit a link.</p>
-				<div id="links-list" class="grid gap-3">
-					if len(links) == 0 {
-						<div class="text-center py-8 text-base-content/60">
-							<p>No links yet. Add your first link!</p>
-						</div>
-					} else {
-						for _, link := range links {
-							@linkItem(link)
-						}
-					}
-				</div>
-			</fieldset>
-		</div>
-
-		<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-6 rounded-box shadow-sm h-fit">
-			<legend class="fieldset-legend">Add a link</legend>
-			<form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
-				<div class="space-y-4">
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Label <span class="text-error">*</span></span>
-						</label>
-						<input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">Type</span>
-						</label>
-						<select class="select select-bordered w-full" name="type">
-							<option value="standard">Standard</option>
-							<option value="social">Social</option>
-							<option value="product">Product</option>
-						</select>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">URL <span class="text-error">*</span></span>
-						</label>
-						<input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
-					</div>
-				</div>
-				<div class="flex gap-2 justify-end pt-2">
-					<button type="reset" class="btn btn-ghost">Cancel</button>
-					<button type="submit" class="btn btn-primary">Save link</button>
-				</div>
-			</form>
-		</fieldset>
-	</div>
-}
-
-templ linkItem(link *domain.Link) {
-	<div id={ fmt.Sprintf("link-%s", link.ID) } class="card border border-base-300 bg-base-100 shadow-sm">
-		<div class="card-body gap-2">
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<div>
-					<p class="text-lg font-semibold">{ link.Title }</p>
-					<p class="text-sm text-base-content/70">{ link.URL }</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<span class="badge badge-outline badge-sm">{ string(link.Type) }</span>
-					<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
-						<button type="submit" class="btn btn-ghost btn-sm text-info" title="Refresh metadata">
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-							</svg>
-						</button>
-					</form>
-					<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
-						<button type="submit" class="btn btn-ghost btn-sm text-error">Delete</button>
-					</form>
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-templ themeTab(user *domain.User) {
-	<div class="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
-		<div class="space-y-6">
-			<form method="post" action="/dashboard/theme" class="space-y-6" data-controller="form-autosave">
-				<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-					<legend class="fieldset-legend">Appearance</legend>
-					<p class="text-sm text-base-content/70 mb-4">Select your preferred theme mode.</p>
-					<div class="grid gap-3 sm:grid-cols-3">
-						for _, mode := range []string{"system", "light", "dark"} {
-							<label class="theme-option">
-								<input type="radio" name="mode" value={ mode } checked?={ strings.EqualFold(user.Theme.Mode, mode) || (user.Theme.Mode == "" && mode == "system") }/>
-								<span class="theme-btn">{ mode }</span>
-							</label>
-						}
-					</div>
-				</fieldset>
-
-				<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-					<legend class="fieldset-legend">Theme Presets</legend>
-					<p class="text-sm text-base-content/70 mb-4">Select a layout and primary color. Updates are pushed live.</p>
-					<div class="grid gap-3 sm:grid-cols-3">
-						for _, preset := range []string{"stacked", "grid", "carousel"} {
-							<label class="theme-option">
-								<input type="radio" name="layout" value={ preset } checked?={ strings.EqualFold(user.Theme.LayoutStyle, preset) }/>
-								<span class="theme-btn">{ preset }</span>
-							</label>
-						}
-					</div>
-				</fieldset>
-
-				<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-					<legend class="fieldset-legend">Customizations</legend>
-					
-					<div class="space-y-6">
-						<div class="space-y-2">
-							<span class="label-text font-medium block">Primary Color</span>
-							<div class="flex flex-wrap gap-3">
-								for _, color := range []string{"#6366F1", "#22C55E", "#F97316", "#06B6D4"} {
-									<label class="color-swatch-option">
-										<input type="radio" name="primary_color" value={ color } checked?={ strings.EqualFold(user.Theme.PrimaryColor, color) }/>
-										<span class="color-swatch" style={ fmt.Sprintf("background:%s", color) }></span>
-										<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-											<polyline points="20 6 9 17 4 12"></polyline>
-										</svg>
-									</label>
+								<div class="flex-1">
+									<input 
+										type="file" 
+										id="avatar-input"
+										class="file-input file-input-bordered file-input-sm w-full max-w-xs" 
+										name="avatar" 
+										accept="image/png, image/jpeg, image/jpg"
+										onchange="previewAvatar(this)"
+									/>
+									<p class="text-xs text-base-content/60 mt-1">Upload a JPG or PNG. It will be resized to 500×500 and converted to WebP.</p>
+								</div>
+							</div>
+							<script>
+								function previewAvatar(input) {
+									const preview = document.getElementById('avatar-preview');
+									const placeholder = document.getElementById('avatar-placeholder');
+									if (input.files && input.files[0]) {
+										const reader = new FileReader();
+										reader.onload = function(e) {
+											preview.src = e.target.result;
+											preview.classList.remove('hidden');
+											if (placeholder) placeholder.classList.add('hidden');
+										};
+										reader.readAsDataURL(input.files[0]);
+									}
 								}
+							</script>
+						</div>
+
+						<div class="form-control w-full">
+							<label class="label">
+								<span class="label-text">Display Name</span>
+							</label>
+							<input class="input input-bordered w-full" name="title" value={ user.Title } placeholder="e.g. John Doe"/>
+						</div>
+						
+						<div class="form-control w-full">
+							<label class="label">
+								<span class="label-text">Handle</span>
+							</label>
+							<div class="join w-full">
+								<span class="join-item btn btn-active btn-sm no-animation cursor-default bg-base-200 border-base-300">/</span>
+								<input class="join-item input input-bordered input-sm w-full font-mono text-sm" 
+									name="handle" 
+									value={ user.Handle } 
+									placeholder="username"
+									oninput="this.value = this.value.replace(/\s+/g, '').replace(/[^a-zA-Z0-9_\-]/g, '')"
+									title="Letters, numbers, and hyphens only. No spaces."
+								/>
+							</div>
+							<div class="label">
+								<span class="label-text-alt text-base-content/50">No spaces allowed.</span>
 							</div>
 						</div>
 
 						<div class="form-control w-full">
 							<label class="label">
-								<span class="label-text">Custom Font</span>
+								<span class="label-text">Bio</span>
 							</label>
-							<input class="input input-bordered w-full" name="font" value={ user.Theme.TitleFontStyle } placeholder="Inter, Sans"/>
+							<textarea class="textarea textarea-bordered h-32 leading-relaxed w-full" name="description" placeholder="Tell your story...">{ user.Description }</textarea>
 						</div>
 
-						<div class="space-y-2 pt-2">
-							<label class="label justify-start gap-4 cursor-pointer">
-								<input type="checkbox" name="fade_in_animation" class="checkbox" checked?={ user.Theme.FadeInAnimationEnabled }/>
-								<span class="label-text">Enable fade-in animation</span>
+						<div class="mt-4">
+							<button type="submit" class="btn btn-primary px-8">Save Profile</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+
+		<!-- Right Column: SEO & Advanced (8 cols) -->
+		<div class="md:col-span-6 space-y-6">
+			<div class="card bg-base-100 border border-base-300 shadow-sm">
+				<div class="card-body p-4 sm:p-8">
+					<h3 class="card-title text-sm font-semibold">Search Engine Optimization</h3>
+				
+					<div class="mb-6 flex justify-between items-center">
+						<p class="text-sm text-base-content/60">Control your preview card on Twitter, LinkedIn, and Google.</p>
+						<div class="badge badge-neutral badge-outline">SEO</div>
+					</div>
+
+					<form method="post" action="/dashboard/seo" class="grid grid-cols-1 gap-6" data-controller="form-autosave">
+						<div class="form-control w-full">
+							<label class="label">
+								<span class="label-text font-medium">Meta Title</span>
 							</label>
-							<label class="label justify-start gap-4 cursor-pointer">
-								<input type="checkbox" name="logo_animation" class="checkbox" checked?={ user.Theme.LogoAnimationEnabled }/>
-								<span class="label-text">Animate logo</span>
-							</label>
+							<input class="input input-bordered w-full" name="seo_title" value={ user.SEOMeta.Title } placeholder="Page Title (overrides profile name)"/>
 						</div>
 
-						<div class="flex justify-end pt-4">
-							<button type="submit" class="btn btn-primary px-8">Save Theme</button>
+						<div class="form-control w-full flex flex-col">
+							<label class="label">
+								<span class="label-text font-medium">Meta Description</span>
+							</label>
+							<textarea class="textarea textarea-bordered h-24 w-full" name="seo_description" placeholder="A catchy description for search results...">{ user.SEOMeta.Description }</textarea>
+						</div>
+
+						<div class="form-control w-full">
+							<label class="label">
+								<span class="label-text font-medium">Social Image URL (OG:Image)</span>
+							</label>
+							<div class="flex gap-4">
+								<div class="flex-grow">
+									<input class="input input-bordered w-full font-mono text-xs" name="seo_image" value={ user.SEOMeta.ImageURL } placeholder="https://..."/>
+								</div>
+								if user.SEOMeta.ImageURL != "" {
+									<div class="avatar">
+										<div class="w-12 h-12 rounded bg-base-200">
+											<img src={ user.SEOMeta.ImageURL } alt="Preview" />
+										</div>
+									</div>
+								}
+							</div>
+						</div>
+
+						<div class="flex justify-end pt-4 border-t border-base-200">
+							<button type="submit" class="btn btn-primary px-8">Save SEO Settings</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ linksTab(user *domain.User, links []*domain.Link) {
+	<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+		<div class="md:col-span-8 space-y-6">
+			<div class="card bg-base-100 border border-base-300 shadow-sm">
+				<div class="card-body p-4 sm:p-6">
+					<h3 class="card-title text-sm font-semibold">Your links</h3>
+					<p class="text-sm text-base-content/70 mb-4">Turbo replaces this panel when you reorder or edit a link.</p>
+					<div id="links-list" class="flex flex-col gap-3">
+						if len(links) == 0 {
+							<div class="text-center py-8 text-base-content/60">
+								<p>No links yet. Add your first link!</p>
+							</div>
+						} else {
+							for _, link := range links {
+								@linkItem(link)
+							}
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="md:col-span-4 card bg-base-100 border border-base-300 shadow-sm h-fit">
+			<div class="card-body p-4 sm:p-6">
+				<h3 class="card-title text-sm font-semibold">Add a link</h3>
+				@addLinkForm()
+			</div>
+		</div>
+	</div>
+}
+
+templ linkItem(link *domain.Link) {
+	if link.Type == domain.LinkTypeSocial {
+		// Social link - display as compact icon row
+		<div id={ fmt.Sprintf("link-%s", link.ID) } class="flex w-full items-center gap-4 p-4 bg-base-100 rounded-xl mx-auto transition-all duration-200 hover:shadow-md border border-base-300 shadow-sm">
+			// Social icon
+			if socialIcon, hasSocial := link.Metadata["social:icon"]; hasSocial && socialIcon != "" {
+				<div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+					style={ fmt.Sprintf("background-color: %s", link.Metadata["social:color"]) }>
+					<span class="w-6 h-6 text-white" style="fill: white">
+						@templ.Raw(socialIcon)
+					</span>
+				</div>
+			} else {
+				<div class="w-12 h-12 rounded-full flex items-center justify-center bg-base-200 flex-shrink-0">
+					<span class="text-2xl">🔗</span>
+				</div>
+			}
+			
+			// Info
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center gap-2">
+					if socialName, hasSocial := link.Metadata["social:name"]; hasSocial && socialName != "" {
+						<h3 class="font-bold">{ socialName }</h3>
+					} else {
+						<h3 class="font-bold">{ link.Title }</h3>
+					}
+					<span class="badge badge-sm badge-primary">Social</span>
+				</div>
+				<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs mt-1 text-primary hover:underline font-mono block truncate max-w-xs">{ link.URL }</a>
+			</div>
+			
+			// Actions
+			<div class="flex items-center gap-1 flex-shrink-0">
+				<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
+					<button type="submit" class="btn btn-sm btn-ghost text-error tooltip" data-tip="Delete">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+						</svg>
+					</button>
+				</form>
+			</div>
+		</div>
+	} else {
+		// Regular link - display as vertical card (profile style)
+		<div id={ fmt.Sprintf("link-%s", link.ID) } class="card max-w-96 bg-base-100 shadow-sm border border-base-300 mb-4 break-inside-avoid w-full mx-auto overflow-hidden transition-all duration-200 hover:shadow-md">
+			if ogImage, hasImage := link.Metadata["og:image"]; hasImage && ogImage != "" {
+				<figure>
+					<img src={ ogImage } alt={ link.Title } class="w-full h-48 object-cover"/>
+				</figure>
+			} else {
+				<figure class="bg-base-200 h-32 flex items-center justify-center">
+					<span class="text-4xl text-base-content/20">🔗</span>
+				</figure>
+			}
+			<div class="card-body p-4">
+				<div class="flex items-start justify-between gap-2 mb-1">
+					<div class="min-w-0">
+						if ogTitle, ok := link.Metadata["og:title"]; ok && ogTitle != "" {
+							<h2 class="card-title text-base font-bold line-clamp-1" title={ ogTitle }>{ ogTitle }</h2>
+							if link.Title != ogTitle {
+								<p class="text-xs opacity-60 truncate">{ link.Title }</p>
+							}
+						} else {
+							<h2 class="card-title text-base font-bold line-clamp-1">{ link.Title }</h2>
+						}
+					</div>
+					<span class="badge badge-sm badge-ghost flex-shrink-0">{ string(link.Type) }</span>
+				</div>
+
+				if ogDesc, ok := link.Metadata["og:description"]; ok && ogDesc != "" {
+					<p class="text-sm opacity-70 line-clamp-2" title={ ogDesc }>{ ogDesc }</p>
+				}
+				
+				<div class="mt-4 pt-3 border-t border-base-200 flex items-center justify-between gap-3">
+					<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs text-primary hover:underline font-mono truncate flex-1" title={ link.URL }>
+						{ link.URL }
+					</a>
+					
+					<div class="join shadow-sm flex-shrink-0">
+						<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
+							<button type="submit" class="join-item btn btn-sm btn-ghost text-info tooltip tooltip-left" data-tip="Refresh metadata">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+								</svg>
+							</button>
+						</form>
+						<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
+							<button type="submit" class="join-item btn btn-sm btn-ghost text-error tooltip tooltip-left" data-tip="Delete">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+								</svg>
+							</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// LinkItem is an exported version of linkItem for use in handlers
+templ LinkItem(link *domain.Link) {
+	@linkItem(link)
+}
+
+// LinkItemStream returns a Turbo Stream to append a new link item
+templ LinkItemStream(link *domain.Link) {
+	<turbo-stream action="append" target="links-list">
+		<template>
+			@linkItem(link)
+		</template>
+	</turbo-stream>
+	<turbo-stream action="append" target="flash-messages">
+		<template>
+			<div class="alert alert-success shadow-lg mb-4" data-controller="flash">
+				<span>Link created successfully!</span>
+			</div>
+		</template>
+	</turbo-stream>
+	<turbo-stream action="replace" target="add-link-form">
+		<template>
+			@addLinkForm()
+		</template>
+	</turbo-stream>
+}
+
+// addLinkForm is the form for adding a new link
+templ addLinkForm() {
+	<form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
+		<div class="space-y-4">
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">Label <span class="text-error">*</span></span>
+				</label>
+				<input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
+			</div>
+
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">Type</span>
+				</label>
+				<select class="select select-bordered w-full" name="type">
+					<option value="standard">Standard</option>
+					<option value="social">Social</option>
+					<option value="product">Product</option>
+				</select>
+			</div>
+
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">URL <span class="text-error">*</span></span>
+				</label>
+				<input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
+			</div>
+		</div>
+		<div class="flex gap-2 justify-end pt-2">
+			<button type="reset" class="btn btn-ghost">Cancel</button>
+			<button type="submit" class="btn btn-primary">Save link</button>
+		</div>
+	</form>
+}
+
+templ themeTab(user *domain.User) {
+	<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+		<div class="md:col-span-8 space-y-6">
+			<form method="post" action="/dashboard/theme" class="space-y-6" data-controller="form-autosave">
+				<div class="card bg-base-100 border border-base-300 shadow-sm">
+					<div class="card-body p-4 sm:p-6">
+						<h3 class="card-title text-sm font-semibold">Appearance</h3>
+						<p class="text-sm text-base-content/70 mb-4">Select your preferred theme mode.</p>
+						<div class="grid gap-3 sm:grid-cols-3">
+							for _, mode := range []string{"system", "light", "dark"} {
+								<label class="theme-option">
+									<input type="radio" name="mode" value={ mode } checked?={ strings.EqualFold(user.Theme.Mode, mode) || (user.Theme.Mode == "" && mode == "system") }/>
+									<span class="theme-btn">{ mode }</span>
+								</label>
+							}
 						</div>
 					</div>
-				</fieldset>
+				</div>
+
+				<div class="card bg-base-100 border border-base-300 shadow-sm">
+					<div class="card-body p-4 sm:p-6">
+						<h3 class="card-title text-sm font-semibold">Theme Presets</h3>
+						<p class="text-sm text-base-content/70 mb-4">Select a layout and primary color. Updates are pushed live.</p>
+						<div class="grid gap-3 sm:grid-cols-3">
+							for _, preset := range []string{"stacked", "grid", "carousel"} {
+								<label class="theme-option">
+									<input type="radio" name="layout" value={ preset } checked?={ strings.EqualFold(user.Theme.LayoutStyle, preset) }/>
+									<span class="theme-btn">{ preset }</span>
+								</label>
+							}
+						</div>
+					</div>
+				</div>
+
+				<div class="card bg-base-100 border border-base-300 shadow-sm">
+					<div class="card-body p-4 sm:p-6">
+						<h3 class="card-title text-sm font-semibold">Customizations</h3>
+						
+						<div class="space-y-6">
+							<div class="space-y-2">
+								<span class="label-text font-medium block">Primary Color</span>
+								<div class="flex flex-wrap gap-3">
+									for _, color := range []string{"#6366F1", "#22C55E", "#F97316", "#06B6D4"} {
+										<label class="color-swatch-option">
+											<input type="radio" name="primary_color" value={ color } checked?={ strings.EqualFold(user.Theme.PrimaryColor, color) }/>
+											<span class="color-swatch" style={ fmt.Sprintf("background:%s", color) }></span>
+											<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+												<polyline points="20 6 9 17 4 12"></polyline>
+											</svg>
+										</label>
+									}
+								</div>
+							</div>
+
+							<div class="form-control w-full">
+								<label class="label">
+									<span class="label-text">Custom Font</span>
+								</label>
+								<input class="input input-bordered w-full" name="font" value={ user.Theme.TitleFontStyle } placeholder="Inter, Sans"/>
+							</div>
+
+							<div class="space-y-2 pt-2">
+								<label class="label justify-start gap-4 cursor-pointer">
+									<input type="checkbox" name="fade_in_animation" class="checkbox" checked?={ user.Theme.FadeInAnimationEnabled }/>
+									<span class="label-text">Enable fade-in animation</span>
+								</label>
+								<label class="label justify-start gap-4 cursor-pointer">
+									<input type="checkbox" name="logo_animation" class="checkbox" checked?={ user.Theme.LogoAnimationEnabled }/>
+									<span class="label-text">Animate logo</span>
+								</label>
+							</div>
+
+							<div class="flex justify-end pt-4">
+								<button type="submit" class="btn btn-primary px-8">Save Theme</button>
+							</div>
+						</div>
+					</div>
+				</div>
 			</form>
 		</div>
 
-		<div class="rounded-box border border-base-300 bg-gradient-to-br from-primary/5 via-base-100 to-secondary/5 p-6 shadow-sm sticky top-6 h-fit">
-			<div class="mb-4">
-				<h3 class="font-bold text-lg">Live Preview</h3>
-				<p class="text-sm text-base-content/70">Updates via Turbo Frames.</p>
+		<div class="md:col-span-4">
+			<div class="rounded-box border border-base-300 bg-gradient-to-br from-primary/5 via-base-100 to-secondary/5 p-6 shadow-sm sticky top-6 h-fit">
+				<div class="mb-4">
+					<h3 class="font-bold text-lg">Live Preview</h3>
+					<p class="text-sm text-base-content/70">Updates via Turbo Frames.</p>
+				</div>
+				
+				@ThemePreview(user)
 			</div>
-			
-			@ThemePreview(user)
 		</div>
 	</div>
 }

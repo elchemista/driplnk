@@ -12,6 +12,7 @@ import (
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/internal/service"
+	"github.com/elchemista/driplnk/views/dashboard"
 )
 
 // containsMobile checks if a User-Agent string indicates a mobile device.
@@ -151,69 +152,8 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	// Respond with Turbo Stream or redirect
 	if IsTurboRequest(r) {
 		w.Header().Set("Content-Type", "text/vnd.turbo-stream.html; charset=utf-8")
-		fmt.Fprintf(w, `<turbo-stream action="append" target="flash-messages">
-  <template>
-    <div class="alert alert-success shadow-lg mb-4" data-controller="flash">
-      <span>Link created successfully!</span>
-    </div>
-  </template>
-</turbo-stream>
-<turbo-stream action="append" target="links-list">
-  <template>
-    <div id="link-%s" class="card border border-base-300 bg-base-100 shadow-sm">
-      <div class="card-body gap-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p class="text-lg font-semibold">%s</p>
-            <p class="text-sm text-base-content/70">%s</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="badge badge-outline badge-sm">%s</span>
-            <form method="post" action="/dashboard/links/%s/delete" data-turbo-confirm="Are you sure you want to delete this link?">
-              <button type="submit" class="btn btn-ghost btn-sm text-error">Delete</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </template>
-</turbo-stream>
-<turbo-stream action="replace" target="add-link-form">
-  <template>
-    <form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
-      <div class="space-y-4">
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Title <span class="text-error">*</span></span>
-          </label>
-          <input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
-        </div>
-
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Type</span>
-          </label>
-          <select class="select select-bordered w-full" name="type">
-            <option value="standard">Standard</option>
-            <option value="social">Social</option>
-            <option value="product">Product</option>
-          </select>
-        </div>
-
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">URL <span class="text-error">*</span></span>
-          </label>
-          <input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
-        </div>
-      </div>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="reset" class="btn btn-ghost">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save link</button>
-      </div>
-    </form>
-  </template>
-</turbo-stream>`, link.ID, link.Title, link.URL, string(link.Type), link.ID)
+		// Use the template-based stream response for proper social link rendering
+		dashboard.LinkItemStream(link).Render(r.Context(), w)
 		return
 	}
 

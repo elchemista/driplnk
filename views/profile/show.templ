@@ -48,16 +48,25 @@ templ content(user *domain.User, links []*domain.Link) {
 				}
 			</div>
 
-			// Links Grid
-			<turbo-frame id="profile-links" class="w-full max-w-3xl mx-auto block">
-				if len(links) == 0 {
+			// Social Links Row (icons only)
+			<div class="flex flex-wrap justify-center gap-3 mb-8">
+				for _, link := range links {
+					if link.IsActive && link.Type == domain.LinkTypeSocial {
+						@socialIconLink(link)
+					}
+				}
+			</div>
+
+			// Regular Links Grid
+			<turbo-frame id="profile-links" class="w-full max-w-md mx-auto block">
+				if countNonSocialLinks(links) == 0 {
 					<div class="text-center py-12 opacity-60">
 						<p>No links added yet</p>
 					</div>
 				} else {
 					<div class="grid gap-4">
 						for _, link := range links {
-							if link.IsActive {
+							if link.IsActive && link.Type != domain.LinkTypeSocial {
 								@profileLinkCard(link, user)
 							}
 						}
@@ -71,6 +80,30 @@ templ content(user *domain.User, links []*domain.Link) {
 			</div>
 		</section>
 	</div>
+}
+
+// Social icon link - just a clickable icon with brand color
+templ socialIconLink(link *domain.Link) {
+	<a href={ templ.SafeURL(fmt.Sprintf("/go/%s", link.ID)) } 
+	   data-turbo="false"
+	   class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-md hover:shadow-lg"
+	   style={ fmt.Sprintf("background-color: %s", link.Metadata["social:color"]) }
+	   title={ link.Metadata["social:name"] }>
+		<span class="w-6 h-6 text-white" style="fill: white">
+			@templ.Raw(link.Metadata["social:icon"])
+		</span>
+	</a>
+}
+
+// Helper to count non-social links
+func countNonSocialLinks(links []*domain.Link) int {
+	count := 0
+	for _, link := range links {
+		if link.IsActive && link.Type != domain.LinkTypeSocial {
+			count++
+		}
+	}
+	return count
 }
 
 templ profileLinkCard(link *domain.Link, user *domain.User) {
@@ -90,11 +123,13 @@ templ profileLinkCard(link *domain.Link, user *domain.User) {
 		}
 
 		<div class="card-body">
-			if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
-				<h2 class="card-title text-lg">{ strings.TrimSpace(ogTitle) }</h2>
-			} else {
-				<h2 class="card-title text-lg">{ link.Title }</h2>
-			}
+			<div class="flex items-center justify-between gap-2 mb-1">
+				if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
+					<h2 class="card-title text-lg">{ strings.TrimSpace(ogTitle) }</h2>
+				} else {
+					<h2 class="card-title text-lg">{ link.Title }</h2>
+				}
+			</div>
 			
 			if ogDesc, hasDesc := link.Metadata["og:description"]; hasDesc && ogDesc != "" {
 				<p class="text-sm opacity-70 line-clamp-2">{ strings.TrimSpace(ogDesc) }</p>

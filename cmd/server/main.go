@@ -101,7 +101,6 @@ func main() {
 	metadataFetcher := seo.NewHTMLFetcher()
 
 	log.Println("[INFO] Initializing LinkService with metadata fetching")
-	linkService := service.NewLinkService(linkRepo, metadataFetcher)
 
 	// 5. Setup Social Adapter (Load JSON Config)
 	configDir := "config"
@@ -111,7 +110,9 @@ func main() {
 	} else {
 		log.Printf("[INFO] Loaded %d social platform configs", len(socialConfigs))
 	}
-	_ = social.NewSocialAdapter(socialConfigs)
+	socialAdapter := social.NewSocialAdapter(socialConfigs)
+
+	linkService := service.NewLinkService(linkRepo, metadataFetcher, socialAdapter)
 
 	// 6. Setup OAuth Providers
 	baseURL := "http://localhost:" + serverCfg.Port
@@ -132,11 +133,28 @@ func main() {
 	secureCookie := serverCfg.Port == "443"
 	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "")
 
+	// Init Uploader (can be nil if not configured)
+	var uploader ports.FileUploader
+	if s3Cfg.Bucket != "" {
+		up, err := storage.NewS3Uploader(ctx, storage.S3UploaderConfig{
+			Bucket:     s3Cfg.Bucket,
+			Region:     s3Cfg.Region,
+			CDNURL:     s3Cfg.CDNURL,
+			FolderPath: s3Cfg.Folder,
+		})
+		if err != nil {
+			log.Printf("[WARN] Failed to init S3 uploader: %v", err)
+		} else {
+			uploader = up
+			log.Println("[INFO] S3 Uploader initialized for file uploads")
+		}
+	}
+
 	authHandler := adapters_http.NewAuthHandler(authService, githubProvider, googleProvider, sessionManager, secureCookie)
 	analyticsHandler := adapters_http.NewAnalyticsHandler(analyticsService)
 	analyticsMiddleware := adapters_http.NewAnalyticsMiddleware(analyticsService)
 	pageHandler := adapters_http.NewPageHandler(userRepo, sessionManager, linkService, analyticsService)
-	userHandler := adapters_http.NewUserHandler(userRepo, sessionManager)
+	userHandler := adapters_http.NewUserHandler(userRepo, sessionManager, uploader)
 	linkHandler := adapters_http.NewLinkHandler(linkService, analyticsService, sessionManager, userRepo)
 
 	// 8. HTTP Server
@@ -210,8 +228,15 @@ func main() {
 
 	// Wrap mux with middleware chain
 	var handler http.Handler = mux
+
+	// CSRF Protection (Inner)
+	handler = adapters_http.CSRFMiddleware(handler, secureCookie)
+
 	handler = adapters_http.RecoveryMiddleware(handler)
 	handler = adapters_http.RequestIDMiddleware(handler)
+
+	// Security Headers (Outermost)
+	handler = adapters_http.SecurityHeadersMiddleware(handler)
 
 	server := &http.Server{
 		Addr:    ":" + serverCfg.Port,
