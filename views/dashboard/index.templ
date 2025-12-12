@@ -262,38 +262,7 @@ templ linksTab(user *domain.User, links []*domain.Link) {
 		<div class="md:col-span-4 card bg-base-100 border border-base-300 shadow-sm h-fit">
 			<div class="card-body p-4 sm:p-6">
 				<h3 class="card-title text-sm font-semibold">Add a link</h3>
-				<form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
-					<div class="space-y-4">
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text">Label <span class="text-error">*</span></span>
-							</label>
-							<input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
-						</div>
-
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text">Type</span>
-							</label>
-							<select class="select select-bordered w-full" name="type">
-								<option value="standard">Standard</option>
-								<option value="social">Social</option>
-								<option value="product">Product</option>
-							</select>
-						</div>
-
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text">URL <span class="text-error">*</span></span>
-							</label>
-							<input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
-						</div>
-					</div>
-					<div class="flex gap-2 justify-end pt-2">
-						<button type="reset" class="btn btn-ghost">Cancel</button>
-						<button type="submit" class="btn btn-primary">Save link</button>
-					</div>
-				</form>
+				@addLinkForm()
 			</div>
 		</div>
 	</div>
@@ -327,7 +296,7 @@ templ linkItem(link *domain.Link) {
 					}
 					<span class="badge badge-sm badge-primary">Social</span>
 				</div>
-				<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs mt-4 text-primary hover:underline font-mono block truncate">{ link.URL }</a>
+				<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs mt-1 text-primary hover:underline font-mono block truncate max-w-xs">{ link.URL }</a>
 			</div>
 			
 			// Actions
@@ -397,6 +366,68 @@ templ linkItem(link *domain.Link) {
 			</div>
 		</div>
 	}
+}
+
+// LinkItem is an exported version of linkItem for use in handlers
+templ LinkItem(link *domain.Link) {
+	@linkItem(link)
+}
+
+// LinkItemStream returns a Turbo Stream to append a new link item
+templ LinkItemStream(link *domain.Link) {
+	<turbo-stream action="append" target="links-list">
+		<template>
+			@linkItem(link)
+		</template>
+	</turbo-stream>
+	<turbo-stream action="append" target="flash-messages">
+		<template>
+			<div class="alert alert-success shadow-lg mb-4" data-controller="flash">
+				<span>Link created successfully!</span>
+			</div>
+		</template>
+	</turbo-stream>
+	<turbo-stream action="replace" target="add-link-form">
+		<template>
+			@addLinkForm()
+		</template>
+	</turbo-stream>
+}
+
+// addLinkForm is the form for adding a new link
+templ addLinkForm() {
+	<form id="add-link-form" class="space-y-4" method="post" action="/dashboard/links">
+		<div class="space-y-4">
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">Label <span class="text-error">*</span></span>
+				</label>
+				<input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
+			</div>
+
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">Type</span>
+				</label>
+				<select class="select select-bordered w-full" name="type">
+					<option value="standard">Standard</option>
+					<option value="social">Social</option>
+					<option value="product">Product</option>
+				</select>
+			</div>
+
+			<div class="form-control w-full">
+				<label class="label">
+					<span class="label-text">URL <span class="text-error">*</span></span>
+				</label>
+				<input class="input input-bordered w-full" name="url" type="url" placeholder="https://example.com" required/>
+			</div>
+		</div>
+		<div class="flex gap-2 justify-end pt-2">
+			<button type="reset" class="btn btn-ghost">Cancel</button>
+			<button type="submit" class="btn btn-primary">Save link</button>
+		</div>
+	</form>
 }
 
 templ themeTab(user *domain.User) {

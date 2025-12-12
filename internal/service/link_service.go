@@ -35,10 +35,17 @@ func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, titl
 		return nil, fmt.Errorf("link URL is required")
 	}
 
-	// Get existing links to determine order
+	// Get existing links to determine order and check for duplicates
 	existingLinks, err := s.repo.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch existing links: %w", err)
+	}
+
+	// Check for duplicate URL
+	for _, existing := range existingLinks {
+		if existing.URL == url {
+			return nil, fmt.Errorf("link with this URL already exists")
+		}
 	}
 
 	order := len(existingLinks) // New link goes at the end
