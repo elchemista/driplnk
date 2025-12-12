@@ -14,7 +14,7 @@ func TestLinkService_CreateLink(t *testing.T) {
 	ctx := context.Background()
 	repo := mocks.NewMockLinkRepository()
 	metadataFetcher := mocks.NewMockMetadataFetcher()
-	svc := service.NewLinkService(repo, metadataFetcher)
+	svc := service.NewLinkService(repo, metadataFetcher, nil)
 	userID := domain.UserID("user-123")
 
 	t.Run("creates link successfully", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestLinkService_UpdateLink(t *testing.T) {
 	ctx := context.Background()
 	repo := mocks.NewMockLinkRepository()
 	metadataFetcher := mocks.NewMockMetadataFetcher()
-	svc := service.NewLinkService(repo, metadataFetcher)
+	svc := service.NewLinkService(repo, metadataFetcher, nil)
 	userID := domain.UserID("user-123")
 	linkID := domain.LinkID("link-456")
 
@@ -144,7 +144,7 @@ func TestLinkService_DeleteLink(t *testing.T) {
 	ctx := context.Background()
 	repo := mocks.NewMockLinkRepository()
 	metadataFetcher := mocks.NewMockMetadataFetcher()
-	svc := service.NewLinkService(repo, metadataFetcher)
+	svc := service.NewLinkService(repo, metadataFetcher, nil)
 	userID := domain.UserID("user-123")
 	linkID := domain.LinkID("link-789")
 
@@ -185,7 +185,7 @@ func TestLinkService_ListLinks(t *testing.T) {
 	ctx := context.Background()
 	repo := mocks.NewMockLinkRepository()
 	metadataFetcher := mocks.NewMockMetadataFetcher()
-	svc := service.NewLinkService(repo, metadataFetcher)
+	svc := service.NewLinkService(repo, metadataFetcher, nil)
 	userID := domain.UserID("user-list")
 
 	// Add links

@@ -13,17 +13,20 @@ import (
 type LinkService struct {
 	repo            domain.LinkRepository
 	metadataFetcher domain.MetadataFetcher
+	socialResolver  domain.SocialResolver
 }
 
-func NewLinkService(repo domain.LinkRepository, metadataFetcher domain.MetadataFetcher) *LinkService {
+func NewLinkService(repo domain.LinkRepository, metadataFetcher domain.MetadataFetcher, socialResolver domain.SocialResolver) *LinkService {
 	return &LinkService{
 		repo:            repo,
 		metadataFetcher: metadataFetcher,
+		socialResolver:  socialResolver,
 	}
 }
 
 // CreateLink creates a new link for a user.
 // It automatically sets the order to be last in the list and fetches metadata.
+// For social links, it resolves the platform info instead of fetching OG metadata.
 func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, title, url string, linkType domain.LinkType) (*domain.Link, error) {
 	if title == "" {
 		return nil, fmt.Errorf("link title is required")
@@ -58,8 +61,19 @@ func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, titl
 		UpdatedAt: now,
 	}
 
-	// Fetch metadata from the URL if fetcher is available
-	if s.metadataFetcher != nil {
+	// For social links, use the social resolver instead of fetching metadata
+	if linkType == domain.LinkTypeSocial && s.socialResolver != nil {
+		platform, err := s.socialResolver.Resolve(url)
+		if err == nil && platform != nil {
+			link.Metadata["social:name"] = platform.Name
+			link.Metadata["social:icon"] = platform.IconSVG
+			link.Metadata["social:color"] = platform.Color
+			fmt.Printf("[INFO] Resolved social platform for %s: %s\n", url, platform.Name)
+		} else {
+			fmt.Printf("[WARN] Failed to resolve social platform for %s: %v\n", url, err)
+		}
+	} else if s.metadataFetcher != nil {
+		// Fetch metadata from the URL for non-social links
 		fmt.Printf("[INFO] Fetching metadata for URL: %s\n", url)
 		metadata, err := s.metadataFetcher.Fetch(ctx, url)
 		if err != nil {
@@ -89,6 +103,7 @@ func (s *LinkService) CreateLink(ctx context.Context, userID domain.UserID, titl
 }
 
 // RefreshMetadata refetches metadata for an existing link
+// For social links, it re-resolves the platform info instead of fetching OG metadata
 func (s *LinkService) RefreshMetadata(ctx context.Context, linkID domain.LinkID, userID domain.UserID) (*domain.Link, error) {
 	link, err := s.repo.GetByID(ctx, linkID)
 	if err != nil {
@@ -100,18 +115,30 @@ func (s *LinkService) RefreshMetadata(ctx context.Context, linkID domain.LinkID,
 		return nil, fmt.Errorf("unauthorized: link does not belong to user")
 	}
 
-	// Fetch fresh metadata if fetcher is available
-	if s.metadataFetcher != nil {
+	// Update metadata
+	if link.Metadata == nil {
+		link.Metadata = make(map[string]string)
+	}
+
+	// For social links, use the social resolver
+	if link.Type == domain.LinkTypeSocial && s.socialResolver != nil {
+		platform, err := s.socialResolver.Resolve(link.URL)
+		if err == nil && platform != nil {
+			link.Metadata["social:name"] = platform.Name
+			link.Metadata["social:icon"] = platform.IconSVG
+			link.Metadata["social:color"] = platform.Color
+			fmt.Printf("[INFO] Refreshed social platform for %s: %s\n", link.URL, platform.Name)
+		} else {
+			fmt.Printf("[WARN] Failed to resolve social platform for %s: %v\n", link.URL, err)
+			return nil, fmt.Errorf("failed to resolve social platform: %w", err)
+		}
+	} else if s.metadataFetcher != nil {
+		// Fetch fresh metadata for non-social links
 		fmt.Printf("[INFO] Refreshing metadata for URL: %s\n", link.URL)
 		metadata, err := s.metadataFetcher.Fetch(ctx, link.URL)
 		if err != nil {
 			fmt.Printf("[WARN] Failed to refresh metadata for %s: %v\n", link.URL, err)
 			return nil, fmt.Errorf("failed to fetch metadata: %w", err)
-		}
-
-		// Update metadata
-		if link.Metadata == nil {
-			link.Metadata = make(map[string]string)
 		}
 
 		if metadata.Title != "" {
@@ -126,11 +153,11 @@ func (s *LinkService) RefreshMetadata(ctx context.Context, linkID domain.LinkID,
 
 		fmt.Printf("[INFO] Refreshed metadata for %s: title=%s, desc=%s, image=%s\n",
 			link.URL, metadata.Title, metadata.Description, metadata.ImageURL)
+	}
 
-		link.UpdatedAt = time.Now()
-		if err := s.repo.Save(ctx, link); err != nil {
-			return nil, fmt.Errorf("failed to save updated metadata: %w", err)
-		}
+	link.UpdatedAt = time.Now()
+	if err := s.repo.Save(ctx, link); err != nil {
+		return nil, fmt.Errorf("failed to save updated metadata: %w", err)
 	}
 
 	return link, nil

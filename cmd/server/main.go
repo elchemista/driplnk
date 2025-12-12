@@ -101,7 +101,6 @@ func main() {
 	metadataFetcher := seo.NewHTMLFetcher()
 
 	log.Println("[INFO] Initializing LinkService with metadata fetching")
-	linkService := service.NewLinkService(linkRepo, metadataFetcher)
 
 	// 5. Setup Social Adapter (Load JSON Config)
 	configDir := "config"
@@ -111,7 +110,9 @@ func main() {
 	} else {
 		log.Printf("[INFO] Loaded %d social platform configs", len(socialConfigs))
 	}
-	_ = social.NewSocialAdapter(socialConfigs)
+	socialAdapter := social.NewSocialAdapter(socialConfigs)
+
+	linkService := service.NewLinkService(linkRepo, metadataFetcher, socialAdapter)
 
 	// 6. Setup OAuth Providers
 	baseURL := "http://localhost:" + serverCfg.Port
