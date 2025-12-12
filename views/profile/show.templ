@@ -90,11 +90,14 @@ templ profileLinkCard(link *domain.Link, user *domain.User) {
 		}
 
 		<div class="card-body">
-			if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
-				<h2 class="card-title text-lg">{ strings.TrimSpace(ogTitle) }</h2>
-			} else {
-				<h2 class="card-title text-lg">{ link.Title }</h2>
-			}
+			<div class="flex items-center justify-between gap-2 mb-1">
+				if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
+					<h2 class="card-title text-lg">{ strings.TrimSpace(ogTitle) }</h2>
+				} else {
+					<h2 class="card-title text-lg">{ link.Title }</h2>
+				}
+				<span class="badge badge-neutral badge-sm shrink-0">{ string(link.Type) }</span>
+			</div>
 			
 			if ogDesc, hasDesc := link.Metadata["og:description"]; hasDesc && ogDesc != "" {
 				<p class="text-sm opacity-70 line-clamp-2">{ strings.TrimSpace(ogDesc) }</p>
