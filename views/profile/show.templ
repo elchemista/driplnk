@@ -49,7 +49,7 @@ templ content(user *domain.User, links []*domain.Link) {
 			</div>
 
 			// Links Grid
-			<turbo-frame id="profile-links" class="w-full max-w-3xl mx-auto block">
+			<turbo-frame id="profile-links" class="w-full max-w-md mx-auto block">
 				if len(links) == 0 {
 					<div class="text-center py-12 opacity-60">
 						<p>No links added yet</p>
@@ -96,7 +96,6 @@ templ profileLinkCard(link *domain.Link, user *domain.User) {
 				} else {
 					<h2 class="card-title text-lg">{ link.Title }</h2>
 				}
-				<span class="badge badge-neutral badge-sm shrink-0">{ string(link.Type) }</span>
 			</div>
 			
 			if ogDesc, hasDesc := link.Metadata["og:description"]; hasDesc && ogDesc != "" {
