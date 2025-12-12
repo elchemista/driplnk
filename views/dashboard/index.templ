@@ -86,17 +86,60 @@ templ body(user *domain.User, tab string, links []*domain.Link, summary *domain.
 templ profileTab(user *domain.User) {
 	<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
 		<!-- Left Column: Profile Info (4 cols) -->
-		<div class="md:col-span-4 space-y-6">
+		<div class="md:col-span-6 space-y-6">
 			<div class="card bg-base-100 border border-base-300 shadow-sm">
 				<div class="card-body p-4">
 					<h3 class="card-title text-sm font-semibold">Profile Information</h3>
 				
-					<form method="post" action="/dashboard/profile" class="space-y-4" data-controller="form-autosave">
+					<form method="post" action="/dashboard/profile" enctype="multipart/form-data" class="space-y-4" data-controller="form-autosave">
 						<div class="form-control w-full">
 							<label class="label">
-								<span class="label-text">Avatar URL</span>
+								<span class="label-text">Avatar</span>
 							</label>
-							<input class="input input-bordered w-full text-sm" name="avatar" value={ user.AvatarURL } placeholder="https://..."/>
+							<div class="flex items-center gap-4">
+								<div class="avatar">
+									<div class="w-16 h-16 rounded-full bg-base-200 ring ring-primary ring-offset-base-100 ring-offset-2">
+										if user.AvatarURL != "" {
+											<img id="avatar-preview" src={ user.AvatarURL } alt="Avatar" class="rounded-full object-cover" />
+										} else {
+											<img id="avatar-preview" src="" alt="Avatar" class="rounded-full object-cover hidden" />
+											<div id="avatar-placeholder" class="flex items-center justify-center w-full h-full text-2xl font-bold text-base-content/30">
+												if len(user.Handle) > 0 {
+													{ string(user.Handle[0]) }
+												} else {
+													?
+												}
+											</div>
+										}
+									</div>
+								</div>
+								<div class="flex-1">
+									<input 
+										type="file" 
+										id="avatar-input"
+										class="file-input file-input-bordered file-input-sm w-full max-w-xs" 
+										name="avatar" 
+										accept="image/png, image/jpeg, image/jpg"
+										onchange="previewAvatar(this)"
+									/>
+									<p class="text-xs text-base-content/60 mt-1">Upload a JPG or PNG. It will be resized to 500×500 and converted to WebP.</p>
+								</div>
+							</div>
+							<script>
+								function previewAvatar(input) {
+									const preview = document.getElementById('avatar-preview');
+									const placeholder = document.getElementById('avatar-placeholder');
+									if (input.files && input.files[0]) {
+										const reader = new FileReader();
+										reader.onload = function(e) {
+											preview.src = e.target.result;
+											preview.classList.remove('hidden');
+											if (placeholder) placeholder.classList.add('hidden');
+										};
+										reader.readAsDataURL(input.files[0]);
+									}
+								}
+							</script>
 						</div>
 
 						<div class="form-control w-full">
@@ -133,7 +176,7 @@ templ profileTab(user *domain.User) {
 						</div>
 
 						<div class="mt-4">
-							<button type="submit" class="btn btn-primary btn-sm w-full">Save Profile</button>
+							<button type="submit" class="btn btn-primary px-8">Save Profile</button>
 						</div>
 					</form>
 				</div>
@@ -141,7 +184,7 @@ templ profileTab(user *domain.User) {
 		</div>
 
 		<!-- Right Column: SEO & Advanced (8 cols) -->
-		<div class="md:col-span-8 space-y-6">
+		<div class="md:col-span-6 space-y-6">
 			<div class="card bg-base-100 border border-base-300 shadow-sm">
 				<div class="card-body p-4 sm:p-8">
 					<h3 class="card-title text-sm font-semibold">Search Engine Optimization</h3>

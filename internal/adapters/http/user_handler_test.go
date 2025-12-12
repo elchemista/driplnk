@@ -18,7 +18,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 	mockUsers := mocks.NewMockUserRepository()
 	mockSessions := mocks.NewMockSessionManager()
 
-	h := handler.NewUserHandler(mockUsers, mockSessions)
+	h := handler.NewUserHandler(mockUsers, mockSessions, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		user := &domain.User{
@@ -70,7 +70,7 @@ func TestUserHandler_UpdateTheme(t *testing.T) {
 	mockUsers := mocks.NewMockUserRepository()
 	mockSessions := mocks.NewMockSessionManager()
 
-	h := handler.NewUserHandler(mockUsers, mockSessions)
+	h := handler.NewUserHandler(mockUsers, mockSessions, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		user := &domain.User{ID: "user-1"}
