@@ -302,7 +302,7 @@ templ linksTab(user *domain.User, links []*domain.Link) {
 templ linkItem(link *domain.Link) {
 	if link.Type == domain.LinkTypeSocial {
 		// Social link - display as compact icon row
-		<div id={ fmt.Sprintf("link-%s", link.ID) } class="flex items-center gap-4 p-4 bg-base-100 rounded-xl border border-base-300 shadow-sm">
+		<div id={ fmt.Sprintf("link-%s", link.ID) } class="flex w-full items-center gap-4 p-4 bg-base-100 rounded-xl mx-auto transition-all duration-200 hover:shadow-md border border-base-300 shadow-sm">
 			// Social icon
 			if socialIcon, hasSocial := link.Metadata["social:icon"]; hasSocial && socialIcon != "" {
 				<div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
@@ -327,18 +327,11 @@ templ linkItem(link *domain.Link) {
 					}
 					<span class="badge badge-sm badge-primary">Social</span>
 				</div>
-				<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs text-primary hover:underline font-mono block truncate">{ link.URL }</a>
+				<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs mt-4 text-primary hover:underline font-mono block truncate">{ link.URL }</a>
 			</div>
 			
 			// Actions
-			<div class="flex gap-1">
-				<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
-					<button type="submit" class="btn btn-sm btn-ghost text-info tooltip" data-tip="Refresh">
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-						</svg>
-					</button>
-				</form>
+			<div class="flex w-full justify-end gap-1">
 				<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
 					<button type="submit" class="btn btn-sm btn-ghost text-error tooltip" data-tip="Delete">
 						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -349,54 +342,56 @@ templ linkItem(link *domain.Link) {
 			</div>
 		</div>
 	} else {
-		// Regular link - display as card
-		<div id={ fmt.Sprintf("link-%s", link.ID) } class="card lg:card-side bg-base-100 shadow-sm border border-base-300 mb-4 break-inside-avoid">
+		// Regular link - display as vertical card (profile style)
+		<div id={ fmt.Sprintf("link-%s", link.ID) } class="card max-w-96 bg-base-100 shadow-sm border border-base-300 mb-4 break-inside-avoid w-full mx-auto overflow-hidden transition-all duration-200 hover:shadow-md">
 			if ogImage, hasImage := link.Metadata["og:image"]; hasImage && ogImage != "" {
-				<figure class="lg:w-48 h-48 lg:h-auto bg-base-200">
-					<img src={ ogImage } alt={ link.Title } class="w-full h-full object-cover"/>
+				<figure>
+					<img src={ ogImage } alt={ link.Title } class="w-full h-48 object-cover"/>
 				</figure>
 			} else {
-				<figure class="lg:w-48 h-48 lg:h-auto bg-base-200 flex items-center justify-center text-4xl opacity-20">
-					<span class="font-bold">#</span>
+				<figure class="bg-base-200 h-32 flex items-center justify-center">
+					<span class="text-4xl text-base-content/20">🔗</span>
 				</figure>
 			}
-			<div class="card-body p-4 sm:p-6">
-				<div class="flex flex-col sm:flex-row gap-4 justify-between h-full">
-					<div class="flex-1 min-w-0 space-y-2">
-						<div class="flex items-center gap-2">
-							<h3 class="card-title text-base font-bold">{ link.Title }</h3>
-							<span class="badge badge-sm badge-ghost">{ string(link.Type) }</span>
-						</div>
-						
-						<div class="text-xs space-y-1">
-							<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-primary hover:underline font-mono block truncate">{ link.URL }</a>
-							
-							if ogTitle, ok := link.Metadata["og:title"]; ok && ogTitle != "" && ogTitle != link.Title {
-								<p class="font-semibold opacity-75 truncate" title="OG Title">{ ogTitle }</p>
+			<div class="card-body p-4">
+				<div class="flex items-start justify-between gap-2 mb-1">
+					<div class="min-w-0">
+						if ogTitle, ok := link.Metadata["og:title"]; ok && ogTitle != "" {
+							<h2 class="card-title text-base font-bold line-clamp-1" title={ ogTitle }>{ ogTitle }</h2>
+							if link.Title != ogTitle {
+								<p class="text-xs opacity-60 truncate">{ link.Title }</p>
 							}
-							if ogDesc, ok := link.Metadata["og:description"]; ok && ogDesc != "" {
-								<p class="opacity-70 line-clamp-2" title="OG Description">{ ogDesc }</p>
-							}
-						</div>
+						} else {
+							<h2 class="card-title text-base font-bold line-clamp-1">{ link.Title }</h2>
+						}
 					</div>
+					<span class="badge badge-sm badge-ghost flex-shrink-0">{ string(link.Type) }</span>
+				</div>
 
-					<div class="flex flex-row sm:flex-col gap-2 justify-end sm:items-end mt-2 sm:mt-0">
-						<div class="join shadow-sm">
-							<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
-								<button type="submit" class="join-item btn btn-sm btn-ghost text-info tooltip tooltip-left" data-tip="Refresh metadata">
-									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-									</svg>
-								</button>
-							</form>
-							<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
-								<button type="submit" class="join-item btn btn-sm btn-ghost text-error tooltip tooltip-left" data-tip="Delete">
-									<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-									</svg>
-								</button>
-							</form>
-						</div>
+				if ogDesc, ok := link.Metadata["og:description"]; ok && ogDesc != "" {
+					<p class="text-sm opacity-70 line-clamp-2" title={ ogDesc }>{ ogDesc }</p>
+				}
+				
+				<div class="mt-4 pt-3 border-t border-base-200 flex items-center justify-between gap-3">
+					<a href={ templ.SafeURL(link.URL) } target="_blank" class="text-xs text-primary hover:underline font-mono truncate flex-1" title={ link.URL }>
+						{ link.URL }
+					</a>
+					
+					<div class="join shadow-sm flex-shrink-0">
+						<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/refresh", link.ID)) }>
+							<button type="submit" class="join-item btn btn-sm btn-ghost text-info tooltip tooltip-left" data-tip="Refresh metadata">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+								</svg>
+							</button>
+						</form>
+						<form method="post" action={ templ.SafeURL(fmt.Sprintf("/dashboard/links/%s/delete", link.ID)) } data-turbo-confirm="Are you sure you want to delete this link?">
+							<button type="submit" class="join-item btn btn-sm btn-ghost text-error tooltip tooltip-left" data-tip="Delete">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+								</svg>
+							</button>
+						</form>
 					</div>
 				</div>
 			</div>
