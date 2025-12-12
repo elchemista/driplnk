@@ -1,5 +1,7 @@
 package layout
-
+ 
+import "context"
+ 
 templ Base(title string, theme string) {
 	<!DOCTYPE html>
 	<html lang="en" 
@@ -13,6 +15,7 @@ templ Base(title string, theme string) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="csrf-token" content={ getCSRF(ctx) }/>
 			<title>{ title } | Driplnk</title>
 			<link href="/assets/dist/app.css" rel="stylesheet" data-turbo-track="reload"/>
 			<script src="/assets/dist/app.js" defer data-turbo-track="reload"></script>
@@ -24,4 +27,11 @@ templ Base(title string, theme string) {
 			</div>
 		</body>
 	</html>
+}
+
+func getCSRF(ctx context.Context) string {
+	if v := ctx.Value("csrf_token"); v != nil {
+		return v.(string)
+	}
+	return ""
 }

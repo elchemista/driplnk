@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"strings"
@@ -155,4 +157,60 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// SecurityHeadersMiddleware adds standard security headers to all responses.
+func SecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// CSRFMiddleware implements the Double Submit Cookie pattern.
+func CSRFMiddleware(next http.Handler, secure bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Check for existing CSRF cookie
+		cookie, err := r.Cookie("csrf_token")
+		var token string
+
+		if err != nil || cookie.Value == "" {
+			// Generate new token
+			token = generateRandomToken()
+			http.SetCookie(w, &http.Cookie{
+				Name:     "csrf_token",
+				Value:    token,
+				Path:     "/",
+				HttpOnly: true, // We will expose via meta tag
+				Secure:   secure,
+				SameSite: http.SameSiteLaxMode,
+			})
+		} else {
+			token = cookie.Value
+		}
+
+		// 2. Expose token to context for templates to render <meta>
+		ctx := context.WithValue(r.Context(), "csrf_token", token)
+
+		// 3. Enforce CSRF check for unsafe methods
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete || r.Method == http.MethodPatch {
+			// Verify header matches cookie
+			headerToken := r.Header.Get("X-CSRF-Token")
+			if headerToken == "" || headerToken != token {
+				http.Error(w, "Forbidden: Invalid CSRF Token", http.StatusForbidden)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func generateRandomToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
 }

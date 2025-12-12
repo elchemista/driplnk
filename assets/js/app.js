@@ -71,3 +71,10 @@ document.addEventListener("turbo:fetch-request-error", (event) => {
   // though Turbo usually logs it anyway.
 })
 
+document.addEventListener("turbo:before-fetch-request", (event) => {
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
+  if (token) {
+    event.detail.fetchOptions.headers["X-CSRF-Token"] = token
+  }
+})
+

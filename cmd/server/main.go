@@ -228,8 +228,15 @@ func main() {
 
 	// Wrap mux with middleware chain
 	var handler http.Handler = mux
+
+	// CSRF Protection (Inner)
+	handler = adapters_http.CSRFMiddleware(handler, secureCookie)
+
 	handler = adapters_http.RecoveryMiddleware(handler)
 	handler = adapters_http.RequestIDMiddleware(handler)
+
+	// Security Headers (Outermost)
+	handler = adapters_http.SecurityHeadersMiddleware(handler)
 
 	server := &http.Server{
 		Addr:    ":" + serverCfg.Port,
