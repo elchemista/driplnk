@@ -3,6 +3,7 @@ package dashboard
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/elchemista/driplnk/internal/domain"
 	"github.com/elchemista/driplnk/views/layout"
@@ -114,8 +115,8 @@ templ profileTab(user *domain.User) {
 								name="handle" 
 								value={ user.Handle } 
 								placeholder="username"
-								oninput="this.value = this.value.replace(/\s+/g, '').replace(/[^a-zA-Z0-9-_]/g, '')"
-								pattern="[a-zA-Z0-9-_]+"
+								oninput="this.value = this.value.replace(/\s+/g, '').replace(/[^a-zA-Z0-9\-_]/g, '')"
+								pattern="[a-zA-Z0-9\-_]+"
 								title="Letters, numbers, and hyphens only. No spaces."
 							/>
 						</div>
@@ -186,14 +187,6 @@ templ profileTab(user *domain.User) {
 					</div>
 				</form>
 			</fieldset>
-			
-			<div role="alert" class="alert shadow-sm border border-base-300 bg-base-100">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-				<div>
-					<h3 class="font-bold text-sm">Pro Tip</h3>
-					<div class="text-xs">Use a high-quality image of at least 1200x630px for the best social preview results.</div>
-				</div>
-			</div>
 		</div>
 	</div>
 }
@@ -224,7 +217,7 @@ templ linksTab(user *domain.User, links []*domain.Link) {
 				<div class="space-y-4">
 					<div class="form-control w-full">
 						<label class="label">
-							<span class="label-text">Title <span class="text-error">*</span></span>
+							<span class="label-text">Label <span class="text-error">*</span></span>
 						</label>
 						<input class="input input-bordered w-full" name="title" placeholder="My portfolio" required/>
 					</div>
@@ -285,15 +278,15 @@ templ linkItem(link *domain.Link) {
 templ themeTab(user *domain.User) {
 	<div class="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
 		<div class="space-y-6">
-			<form method="post" action="/dashboard/theme" class="space-y-6">
+			<form method="post" action="/dashboard/theme" class="space-y-6" data-controller="form-autosave">
 				<fieldset class="fieldset w-full bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
 					<legend class="fieldset-legend">Appearance</legend>
 					<p class="text-sm text-base-content/70 mb-4">Select your preferred theme mode.</p>
 					<div class="grid gap-3 sm:grid-cols-3">
 						for _, mode := range []string{"system", "light", "dark"} {
-							<label class="btn btn-outline btn-sm cursor-pointer border-base-300">
-								<input type="radio" name="mode" value={ mode } class="hidden" checked?={ user.Theme.Mode == mode || (user.Theme.Mode == "" && mode == "system") }/>
-								<span class="capitalize">{ mode }</span>
+							<label class="theme-option">
+								<input type="radio" name="mode" value={ mode } checked?={ strings.EqualFold(user.Theme.Mode, mode) || (user.Theme.Mode == "" && mode == "system") }/>
+								<span class="theme-btn">{ mode }</span>
 							</label>
 						}
 					</div>
@@ -304,9 +297,9 @@ templ themeTab(user *domain.User) {
 					<p class="text-sm text-base-content/70 mb-4">Select a layout and primary color. Updates are pushed live.</p>
 					<div class="grid gap-3 sm:grid-cols-3">
 						for _, preset := range []string{"stacked", "grid", "carousel"} {
-							<label class="btn btn-outline btn-sm cursor-pointer border-base-300">
-								<input type="radio" name="layout" value={ preset } class="hidden" checked?={ user.Theme.LayoutStyle == preset }/>
-								<span class="capitalize">{ preset }</span>
+							<label class="theme-option">
+								<input type="radio" name="layout" value={ preset } checked?={ strings.EqualFold(user.Theme.LayoutStyle, preset) }/>
+								<span class="theme-btn">{ preset }</span>
 							</label>
 						}
 					</div>
@@ -320,9 +313,12 @@ templ themeTab(user *domain.User) {
 							<span class="label-text font-medium block">Primary Color</span>
 							<div class="flex flex-wrap gap-3">
 								for _, color := range []string{"#6366F1", "#22C55E", "#F97316", "#06B6D4"} {
-									<label class="cursor-pointer">
-										<input type="radio" name="primary_color" value={ color } class="hidden" checked?={ user.Theme.PrimaryColor == color }/>
-										<span class="btn btn-sm w-10 h-10 border-2 border-transparent hover:border-base-content/20 peer-checked:border-base-content" style={ fmt.Sprintf("background:%s", color) }></span>
+									<label class="color-swatch-option">
+										<input type="radio" name="primary_color" value={ color } checked?={ strings.EqualFold(user.Theme.PrimaryColor, color) }/>
+										<span class="color-swatch" style={ fmt.Sprintf("background:%s", color) }></span>
+										<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+											<polyline points="20 6 9 17 4 12"></polyline>
+										</svg>
 									</label>
 								}
 							</div>
@@ -360,32 +356,7 @@ templ themeTab(user *domain.User) {
 				<p class="text-sm text-base-content/70">Updates via Turbo Frames.</p>
 			</div>
 			
-			<div id="theme-preview" class="mockup-browser border border-base-300 bg-base-100 shadow-md">
-				<div class="mockup-browser-toolbar">
-					<div class="input border border-base-300">https://dripl.nk/{ user.Handle }</div>
-				</div>
-				<div class="flex flex-col items-center justify-center gap-4 px-4 py-8 bg-base-200/50">
-					<div class="avatar placeholder">
-						<div class="bg-neutral text-neutral-content w-16 rounded-full">
-							<span class="text-xl">
-								if user.AvatarURL != "" {
-									<img src={ user.AvatarURL } />
-								} else if len(user.Handle) > 0 {
-									{ string(user.Handle[0]) }
-								} else {
-									?
-								}
-							</span>
-						</div>
-					</div>
-					<div class="text-center">
-						<p class="font-bold text-lg" style={ fmt.Sprintf("font-family: %s", user.Theme.TitleFontStyle) }>{ user.Title }</p>
-						<p class="text-xs opacity-60">{"@"}{ user.Handle }</p>
-					</div>
-					<button class="btn btn-primary btn-sm btn-wide">Link 1</button>
-					<button class="btn btn-outline btn-sm btn-wide">Link 2</button>
-				</div>
-			</div>
+			@ThemePreview(user)
 		</div>
 	</div>
 }
@@ -448,6 +419,43 @@ templ analyticsTab(user *domain.User, summary *domain.AnalyticsSummary) {
 			</div>
 		</div>
 	</div>
+}
+
+templ ThemePreview(user *domain.User) {
+	<div id="theme-preview" class="mockup-browser border border-base-300 bg-base-100 shadow-md">
+		<div class="mockup-browser-toolbar">
+			<div class="input border border-base-300">https://dripl.nk/{ user.Handle }</div>
+		</div>
+		<div class="flex flex-col items-center justify-center gap-4 px-4 py-8 bg-base-200/50">
+			<div class="avatar placeholder">
+				<div class="bg-neutral text-neutral-content w-16 rounded-full">
+					<span class="text-xl">
+						if user.AvatarURL != "" {
+							<img src={ user.AvatarURL } />
+						} else if len(user.Handle) > 0 {
+							{ string(user.Handle[0]) }
+						} else {
+							?
+						}
+					</span>
+				</div>
+			</div>
+			<div class="text-center">
+				<p class="font-bold text-lg" style={ fmt.Sprintf("font-family: %s", user.Theme.TitleFontStyle) }>{ user.Title }</p>
+				<p class="text-xs opacity-60">{"@"}{ user.Handle }</p>
+			</div>
+			<button class="btn btn-primary btn-sm btn-wide" style={ fmt.Sprintf("background-color: %s; border-color: %s", user.Theme.PrimaryColor, user.Theme.PrimaryColor) }>Link 1</button>
+			<button class="btn btn-outline btn-sm btn-wide">Link 2</button>
+		</div>
+	</div>
+}
+
+templ ThemePreviewStream(user *domain.User) {
+	<turbo-stream action="replace" target="theme-preview">
+		<template>
+			@ThemePreview(user)
+		</template>
+	</turbo-stream>
 }
 
 func tabClasses(current, candidate string) string {

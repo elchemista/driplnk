@@ -2,7 +2,6 @@ package profile
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/elchemista/driplnk/internal/domain"
@@ -21,114 +20,88 @@ templ Frame(user *domain.User, links []*domain.Link) {
 }
 
 templ content(user *domain.User, links []*domain.Link) {
-	<section class="py-12">
-		<div class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-			<div class="space-y-6 rounded-3xl border border-base-300 bg-base-100/70 p-8 shadow-xl backdrop-blur">
-				<div class="flex items-center gap-4">
-					if user.AvatarURL != "" {
-						<img src={ user.AvatarURL } alt={ user.Handle } class="h-20 w-20 rounded-2xl border border-base-300 object-cover shadow" loading="lazy"/>
-					} else {
-						<div class="flex h-20 w-20 items-center justify-center rounded-2xl border border-base-300 bg-base-200 text-3xl font-bold">
-							{ avatarInitial(user) }
-						</div>
-					}
-					<div class="space-y-1">
-						<p class="text-xs uppercase tracking-[0.2em] text-primary/80">Driplnk profile</p>
-						<h1 class="text-3xl font-bold">{ user.Title }</h1>
-						<p class="text-base-content/70">{"@"}{ user.Handle }</p>
+	<div class={ 
+		"min-h-screen w-full transition-colors duration-300", 
+		fmt.Sprintf("pattern-%s", user.Theme.BackgroundPattern), 
+		fmt.Sprintf("animate-%s", user.Theme.BackgroundAnimation),
+	} 
+	style={ themeStyles(user) }>
+		
+		<section class={ 
+			"container mx-auto px-4 py-12",
+			fmt.Sprintf("layout-%s", user.Theme.LayoutStyle),
+		}>
+			// Profile Header & Info
+			<div class="mb-8 flex flex-col items-center text-center">
+				if user.AvatarURL != "" {
+					<img src={ user.AvatarURL } alt={ user.Handle } class="h-32 w-32 rounded-full border-4 border-base-100 shadow-xl object-cover mb-4" loading="lazy"/>
+				} else {
+					<div class="flex h-32 w-32 items-center justify-center rounded-full border-4 border-base-100 bg-base-200 text-5xl font-bold shadow-xl mb-4">
+						{ avatarInitial(user) }
 					</div>
-				</div>
-				<p class="text-base-content/80 leading-relaxed">{ user.Description }</p>
-
-				<div class="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-					<p class="text-sm font-semibold text-primary">Live theme preview</p>
-					<p class="text-sm text-base-content/70">Layout: { user.Theme.LayoutStyle }, Background: { user.Theme.BackgroundStyle }, Primary: { user.Theme.PrimaryColor }</p>
-					<p class="text-sm text-base-content/70">Animations: Fade-in { strconv.FormatBool(user.Theme.FadeInAnimationEnabled) }, Logo { strconv.FormatBool(user.Theme.LogoAnimationEnabled) }</p>
-				</div>
+				}
+				
+				<h1 class="text-3xl font-bold mb-2">{ user.Title }</h1>
+				<p class="text-lg opacity-80 mb-4 max-w-lg">{"@"}{ user.Handle }</p>
+				if user.Description != "" {
+					<p class="text-base opacity-90 max-w-2xl leading-relaxed">{ user.Description }</p>
+				}
 			</div>
 
-			<div class="space-y-4">
-				<turbo-frame id="profile-links" class="block rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-lg">
-					<div class="flex items-center justify-between">
-						<h2 class="text-xl font-semibold">Featured links</h2>
-						<span class="badge badge-primary badge-outline">{ strconv.Itoa(len(links)) } links</span>
+			// Links Grid
+			<turbo-frame id="profile-links" class="w-full max-w-3xl mx-auto block">
+				if len(links) == 0 {
+					<div class="text-center py-12 opacity-60">
+						<p>No links added yet</p>
 					</div>
-					<div class="mt-4 grid gap-3">
-						if len(links) == 0 {
-							<div class="text-center py-8 text-base-content/60">
-								<p>No links added yet</p>
-							</div>
-						} else {
-							for _, link := range links {
-								if link.IsActive {
-									@profileLinkCard(link)
-								}
+				} else {
+					<div class="grid gap-4">
+						for _, link := range links {
+							if link.IsActive {
+								@profileLinkCard(link, user)
 							}
 						}
 					</div>
-				</turbo-frame>
+				}
+			</turbo-frame>
 
-				<div class="rounded-3xl border border-base-300 bg-base-100/70 p-6 shadow-lg">
-					<h3 class="text-lg font-semibold">Meta</h3>
-					<div class="mt-3 grid gap-3 sm:grid-cols-2">
-						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
-							<p class="text-xs uppercase tracking-[0.2em] text-primary/70">Created</p>
-							<p class="text-sm text-base-content/80">{ user.CreatedAt.Format("Jan 02, 2006") }</p>
-						</div>
-						<div class="rounded-2xl border border-base-300 bg-base-200/60 p-4">
-							<p class="text-xs uppercase tracking-[0.2em] text-secondary/70">Updated</p>
-							<p class="text-sm text-base-content/80">{ user.UpdatedAt.Format("Jan 02, 2006") }</p>
-						</div>
-					</div>
-				</div>
+			// Footer / Meta
+			<div class="mt-16 text-center text-sm opacity-50">
+				<p>Powered by Driplnk</p>
 			</div>
-		</div>
-	</section>
+		</section>
+	</div>
 }
 
-templ profileLinkCard(link *domain.Link) {
+templ profileLinkCard(link *domain.Link, user *domain.User) {
 	<a href={ templ.SafeURL(fmt.Sprintf("/go/%s", link.ID)) } 
 	   data-turbo="false"
-	   class="block bg-base-200/60 border border-base-300 hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer rounded-2xl overflow-hidden">
+	   class="card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] w-full mx-auto block overflow-hidden"
+	   style={ linkStyle(user) }>
 		
-		// Show OG image if available
 		if ogImage, hasImage := link.Metadata["og:image"]; hasImage && ogImage != "" {
-			<div class="aspect-video w-full bg-base-300 relative">
-				<img src={ ogImage } alt={ link.Title } class="w-full h-full object-cover" loading="lazy"/>
-				<div class="absolute top-2 right-2">
-					<span class="badge badge-sm badge-primary">{ string(link.Type) }</span>
-				</div>
-			</div>
+			<figure>
+				<img src={ ogImage } alt={ link.Title } class="w-full h-48 object-cover"/>
+			</figure>
+		} else {
+			<figure class="bg-base-200 h-32 flex items-center justify-center">
+				<span class="text-4xl">🔗</span>
+			</figure>
 		}
-		
-		<div class="p-4">
-			<div class="flex items-start justify-between gap-2">
-				<div class="flex-1 min-w-0">
-					// Show og:title or fallback to link.Title
-					if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
-						<p class="text-lg font-semibold line-clamp-2 mb-1">{ strings.TrimSpace(ogTitle) }</p>
-					} else {
-						<p class="text-lg font-semibold line-clamp-2 mb-1">{ link.Title }</p>
-					}
-					
-					// Show og:description if available
-					if ogDesc, hasDesc := link.Metadata["og:description"]; hasDesc && ogDesc != "" {
-						<p class="text-sm text-base-content/70 line-clamp-2 mb-1">{ strings.TrimSpace(ogDesc) }</p>
-					}
-					
-					// Show URL
-					<p class="text-xs text-base-content/50 truncate">{ link.URL }</p>
-				</div>
-				
-				// Only show arrow and badge if no image
-				if _, hasImage := link.Metadata["og:image"]; !hasImage {
-					<div class="flex flex-col items-end gap-2">
-						<span class="badge badge-sm badge-primary badge-outline">{ string(link.Type) }</span>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/60" viewBox="0 0 20 20" fill="currentColor">
-							<path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-						</svg>
-					</div>
-				}
+
+		<div class="card-body">
+			if ogTitle, hasTitle := link.Metadata["og:title"]; hasTitle && ogTitle != "" {
+				<h2 class="card-title text-lg">{ strings.TrimSpace(ogTitle) }</h2>
+			} else {
+				<h2 class="card-title text-lg">{ link.Title }</h2>
+			}
+			
+			if ogDesc, hasDesc := link.Metadata["og:description"]; hasDesc && ogDesc != "" {
+				<p class="text-sm opacity-70 line-clamp-2">{ strings.TrimSpace(ogDesc) }</p>
+			}
+			
+			<div class="card-actions justify-end mt-2">
+				<span class="btn btn-primary btn-sm">Visit Link</span>
 			</div>
 		</div>
 	</a>
@@ -139,4 +112,39 @@ func avatarInitial(user *domain.User) string {
 		return "?"
 	}
 	return strings.ToUpper(string(user.Handle[0]))
+}
+
+// helper to generate inline styles for the main container
+func themeStyles(user *domain.User) string {
+	styles := []string{}
+	
+	// Background
+	if user.Theme.BackgroundValue != "" {
+		styles = append(styles, fmt.Sprintf("background: %s", user.Theme.BackgroundValue))
+	}
+	
+	// Font
+	if user.Theme.TitleFontStyle != "" {
+		// Ensure family is properly quoted if needed in JSON, but here assume raw string is valid CSS value
+		styles = append(styles, fmt.Sprintf("font-family: %s", user.Theme.TitleFontStyle))
+	}
+
+	// Primary Color variable setup (attempting to override DaisyUI/Tailwind vars)
+	if user.Theme.PrimaryColor != "" {
+		// Setting this might affect children using currentColor or specific var usages
+		// DaisyUI 4/5 uses oklch for internal consistent palette, but passing a hex to --color-primary might break 
+		// transparency modifiers if not careful. 
+		// For simple support, we can try setting color property or custom vars.
+		styles = append(styles, fmt.Sprintf("--color-primary: %s", user.Theme.PrimaryColor))
+		
+		// Also allow using var(--primary-color) in custom CSS
+		styles = append(styles, fmt.Sprintf("--primary-color: %s", user.Theme.PrimaryColor))
+	}
+
+	return strings.Join(styles, "; ")
+}
+
+func linkStyle(user *domain.User) string {
+	// Potentially style the links with primary color borders or similar
+	return ""
 }
