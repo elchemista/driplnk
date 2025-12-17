@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/elchemista/driplnk/internal/domain"
+	"github.com/elchemista/driplnk/internal/pkg/sanitizer"
+	"github.com/elchemista/driplnk/internal/pkg/validator"
 	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/internal/service"
 	"github.com/elchemista/driplnk/views/dashboard"
@@ -133,12 +135,23 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title := strings.TrimSpace(r.FormValue("title"))
-	url := strings.TrimSpace(r.FormValue("url"))
+	title := sanitizer.Normalize(r.FormValue("title"))
+	url := sanitizer.Normalize(r.FormValue("url"))
 	linkType := domain.LinkType(r.FormValue("type"))
 
-	if title == "" || url == "" {
-		respondError(w, r, "Title and URL are required", http.StatusBadRequest)
+	// Validate inputs
+	input := struct {
+		Title string `validate:"required,max=100"`
+		URL   string `validate:"required,url"`
+		Type  string `validate:"omitempty,oneof=standard social product"`
+	}{
+		Title: title,
+		URL:   url,
+		Type:  string(linkType),
+	}
+
+	if err := validator.ValidateStruct(input); err != nil {
+		respondError(w, r, "Validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 

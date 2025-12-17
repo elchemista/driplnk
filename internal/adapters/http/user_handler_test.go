@@ -24,6 +24,7 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 		user := &domain.User{
 			ID:     "user-1",
 			Handle: "original",
+			Email:  "test@example.com",
 		}
 		mockUsers.AddUser(user)
 		mockSessions.SetCurrentUser("user-1")
@@ -47,8 +48,8 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 	})
 
 	t.Run("HandleTaken", func(t *testing.T) {
-		user := &domain.User{ID: "user-1", Handle: "original"}
-		otherUser := &domain.User{ID: "user-2", Handle: "taken"}
+		user := &domain.User{ID: "user-1", Handle: "original", Email: "u1@example.com"}
+		otherUser := &domain.User{ID: "user-2", Handle: "taken", Email: "u2@example.com"}
 		mockUsers.AddUser(user)
 		mockUsers.AddUser(otherUser)
 		mockSessions.SetCurrentUser("user-1")
@@ -73,7 +74,11 @@ func TestUserHandler_UpdateTheme(t *testing.T) {
 	h := handler.NewUserHandler(mockUsers, mockSessions, nil)
 
 	t.Run("Success", func(t *testing.T) {
-		user := &domain.User{ID: "user-1"}
+		user := &domain.User{
+			ID:     "user-1",
+			Handle: "original",
+			Email:  "test@example.com",
+		}
 		mockUsers.AddUser(user)
 		mockSessions.SetCurrentUser("user-1")
 

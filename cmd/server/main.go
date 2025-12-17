@@ -131,7 +131,13 @@ func main() {
 
 	// 7. Setup Handlers
 	secureCookie := serverCfg.Port == "443"
-	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "")
+	if serverCfg.SessionSecret == "" {
+		log.Println("[WARN] SESSION_SECRET not set, generating random key (sessions will be invalid on restart)")
+	}
+	sessionManager := adapters_http.NewCookieSessionManager(secureCookie, "", serverCfg.SessionSecret)
+
+	// Rate Limiter (e.g., 10 req/s, burst 20)
+	rateLimiter := adapters_http.NewRateLimiter(10, 20)
 
 	// Init Uploader (can be nil if not configured)
 	var uploader ports.FileUploader
@@ -237,6 +243,7 @@ func main() {
 
 	// Security Headers (Outermost)
 	handler = adapters_http.SecurityHeadersMiddleware(handler)
+	handler = rateLimiter.Middleware(handler)
 
 	server := &http.Server{
 		Addr:    ":" + serverCfg.Port,
