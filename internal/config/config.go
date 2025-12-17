@@ -6,14 +6,16 @@ import (
 )
 
 type ServerConfig struct {
-	Port string
-	Env  string
+	Port          string
+	Env           string
+	SessionSecret string
 }
 
 func LoadServerConfig() *ServerConfig {
 	return &ServerConfig{
-		Port: getEnv("PORT", "8080"),
-		Env:  getEnv("ENV", "development"),
+		Port:          getEnv("PORT", "8080"),
+		Env:           getEnv("GO_ENV", "development"),
+		SessionSecret: getEnv("SESSION_SECRET", ""),
 	}
 }
 

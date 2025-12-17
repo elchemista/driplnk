@@ -17,9 +17,9 @@ const (
 type Link struct {
 	ID         LinkID            `json:"id"`
 	UserID     UserID            `json:"user_id"`
-	Title      string            `json:"title"`
-	URL        string            `json:"url"`
-	Type       LinkType          `json:"type"`
+	Title      string            `json:"title" validate:"required,max=100"`
+	URL        string            `json:"url" validate:"required,url"`
+	Type       LinkType          `json:"type" validate:"oneof=standard social product"`
 	Order      int               `json:"order"`
 	IsActive   bool              `json:"is_active"`
 	Metadata   map[string]string `json:"metadata,omitempty"` // Stores icon_name, og:title, og:image, etc.

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/elchemista/driplnk/internal/domain"
+	"github.com/elchemista/driplnk/internal/pkg/sanitizer"
+	"github.com/elchemista/driplnk/internal/pkg/validator"
 	"github.com/elchemista/driplnk/internal/ports"
 	"github.com/elchemista/driplnk/views/dashboard"
 )
@@ -65,9 +67,9 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract and sanitize form values
-	title := strings.TrimSpace(r.FormValue("title"))
-	handle := slugifyHandle(r.FormValue("handle")) // Apply slugify here
-	description := r.FormValue("description")
+	title := sanitizer.Normalize(r.FormValue("title"))
+	handle := slugifyHandle(sanitizer.Normalize(r.FormValue("handle"))) // Apply slugify here
+	description := sanitizer.Normalize(r.FormValue("description"))
 
 	// Handle Avatar Upload
 	avatarURL := user.AvatarURL // Default to existing
@@ -115,6 +117,11 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		user.SEOMeta.ImageURL = avatarURL
 	}
 	user.UpdatedAt = time.Now()
+
+	if err := validator.ValidateStruct(user); err != nil {
+		respondError(w, r, "Validation failed: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	if err := h.users.Save(r.Context(), user); err != nil {
 		log.Printf("[ERR] Failed to update profile: %v", err)
@@ -174,13 +181,13 @@ func (h *UserHandler) UpdateSEO(w http.ResponseWriter, r *http.Request) {
 
 	// Update SEO fields - allow empty values to clear
 	if r.Form.Has("seo_title") {
-		user.SEOMeta.Title = strings.TrimSpace(r.FormValue("seo_title"))
+		user.SEOMeta.Title = sanitizer.Normalize(r.FormValue("seo_title"))
 	}
 	if r.Form.Has("seo_description") {
-		user.SEOMeta.Description = r.FormValue("seo_description")
+		user.SEOMeta.Description = sanitizer.Normalize(r.FormValue("seo_description"))
 	}
 	if r.Form.Has("seo_image") {
-		user.SEOMeta.ImageURL = strings.TrimSpace(r.FormValue("seo_image"))
+		user.SEOMeta.ImageURL = sanitizer.SanitizeURL(r.FormValue("seo_image"))
 	}
 
 	user.UpdatedAt = time.Now()

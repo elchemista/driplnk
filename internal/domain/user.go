@@ -8,9 +8,9 @@ import (
 type UserID string
 
 type SEOMeta struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	ImageURL    string `json:"image_url,omitempty"`
+	Title       string `json:"title,omitempty" validate:"max=70"`
+	Description string `json:"description,omitempty" validate:"max=160"`
+	ImageURL    string `json:"image_url,omitempty" validate:"omitempty,url"`
 }
 
 type Theme struct {
@@ -30,11 +30,11 @@ type Theme struct {
 
 type User struct {
 	ID          UserID    `json:"id"`
-	Email       string    `json:"email"`
-	Handle      string    `json:"handle"`
-	Title       string    `json:"title,omitempty"`
-	Description string    `json:"description,omitempty"`
-	AvatarURL   string    `json:"avatar_url,omitempty"`
+	Email       string    `json:"email" validate:"required,email"`
+	Handle      string    `json:"handle" validate:"required,min=3,max=30,excludesall= "`
+	Title       string    `json:"title,omitempty" validate:"max=100"`
+	Description string    `json:"description,omitempty" validate:"max=500"`
+	AvatarURL   string    `json:"avatar_url,omitempty" validate:"omitempty,url"`
 	SEOMeta     SEOMeta   `json:"seo_meta,omitempty"`
 	Theme       Theme     `json:"theme,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
