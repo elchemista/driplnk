@@ -2,16 +2,32 @@ package sanitizer
 
 import (
 	"strings"
+	"sync"
+
+	"github.com/microcosm-cc/bluemonday"
 )
+
+var (
+	strictPolicy     *bluemonday.Policy
+	strictPolicyOnce sync.Once
+)
+
+func getStrictPolicy() *bluemonday.Policy {
+	strictPolicyOnce.Do(func() {
+		strictPolicy = bluemonday.StrictPolicy()
+	})
+	return strictPolicy
+}
 
 // Normalize trims leading and trailing whitespace.
 func Normalize(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// SanitizeInput uses Normalize for now, but can be extended for more aggressive cleaning.
+// SanitizeInput trims whitespace and removes all HTML tags to prevent XSS.
 func SanitizeInput(s string) string {
-	return Normalize(s)
+	s = Normalize(s)
+	return getStrictPolicy().Sanitize(s)
 }
 
 // SanitizeURL normalizes a URL string.

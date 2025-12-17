@@ -31,6 +31,10 @@ func TestSanitizeInput(t *testing.T) {
 		{"Empty input", "", ""},
 		{"Only whitespace", "   ", ""},
 		{"Mixed whitespace", "\t  word  \n", "word"},
+		{"XSS Script", "<script>alert(1)</script>", ""},
+		{"XSS Image OnError", "<img src=x onerror=alert(1)>", ""},
+		{"XSS Complex", "<a href='javascript:alert(1)'>Click me</a>", "Click me"},
+		{"HTML in text", "Hello <b>World</b>", "Hello World"},
 	}
 
 	for _, tt := range tests {
