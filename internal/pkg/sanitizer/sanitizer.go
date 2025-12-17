@@ -15,7 +15,15 @@ func SanitizeInput(s string) string {
 }
 
 // SanitizeURL normalizes a URL string.
-// It currently uses Normalize, but could be extended to validate schemes, etc.
+// It trims whitespace and ensures the URL starts with http:// or https://.
+// If no scheme is present, it defaults to https://.
 func SanitizeURL(s string) string {
-	return Normalize(s)
+	s = Normalize(s)
+	if s == "" {
+		return ""
+	}
+	if !strings.HasPrefix(s, "http://") && !strings.HasPrefix(s, "https://") {
+		return "https://" + s
+	}
+	return s
 }
