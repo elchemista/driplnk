@@ -2,6 +2,15 @@
 
 A self-hosted link management platform built with Go, designed for speed, flexibility, and privacy.
 
+> **Status:** This project is still in progress, but most parts are done. Help or contributions are welcome.
+
+## Screenshots
+
+![Driplnk screenshot 1](screenshots/Schermata%20del%202025-12-23%2002-00-11.png)
+![Driplnk screenshot 2](screenshots/Schermata%20del%202025-12-23%2001-58-58.png)
+![Driplnk screenshot 3](screenshots/Schermata%20del%202025-12-23%2001-59-26.png)
+![Driplnk screenshot 4](screenshots/Schermata%20del%202025-12-23%2001-59-33.png)
+
 ## Getting Started
 
 ### Prerequisites
@@ -116,4 +125,3 @@ Driplnk follows a **Hexagonal Architecture (Ports & Adapters)**.
 *   **Handlers**: RESTful/HTMX-ready handlers for Auth, Links, and Media.
 *   **Assets**: Serves static files from `/assets/`.
 *   **SEO**: Generates `robots.txt` and `sitemap.xml` dynamically.
-
